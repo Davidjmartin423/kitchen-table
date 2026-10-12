@@ -1,0 +1,2181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cube Playtester</title>
+<style>
+:root {
+  --bg: #17191c;
+  --panel: #212428;
+  --panel2: #2a2e33;
+  --line: #383d44;
+  --text: #e7e9ec;
+  --muted: #98a1ab;
+  --accent: #4c8dff;
+  --accent-soft: rgba(76, 141, 255, 0.18);
+  --danger: #e5534b;
+  --good: #3fb950;
+  --table-opp: #1d2024;
+  --table-me: #202429;
+  --cw: 80px;
+  --ch: calc(var(--cw) / 0.716);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden;
+  user-select: none;
+}
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: #4b525b; background: #31363c; }
+button:disabled { opacity: 0.45; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover:not(:disabled) { background: #3d7ef0; }
+button.ghost { background: transparent; }
+input, textarea, select {
+  font: inherit;
+  color: var(--text);
+  background: #15171a;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  user-select: text;
+}
+input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+kbd {
+  font: 12px ui-monospace, monospace;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+/* ---------- Top bar ---------- */
+#top {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.brand { font-weight: 700; letter-spacing: 0.2px; }
+.brand span { color: var(--accent); }
+#status { color: var(--muted); display: flex; align-items: center; gap: 8px; }
+#status .code {
+  font: 600 15px ui-monospace, monospace;
+  color: var(--text);
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 8px;
+  letter-spacing: 2px;
+  cursor: pointer;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.dot.on { background: var(--good); }
+.dot.off { background: var(--danger); }
+.spacer { flex: 1; }
+#scoreline { color: var(--muted); }
+#scoreline b { color: var(--text); }
+.sizer { display: flex; gap: 4px; }
+.sizer button, #helpBtn { padding: 3px 9px; }
+
+/* ---------- Layout ---------- */
+#app { height: calc(100% - 44px); display: grid; grid-template-columns: 1fr 300px; }
+#play { display: flex; flex-direction: column; min-width: 0; }
+#side {
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  overflow-y: auto;
+}
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  background: var(--panel);
+}
+.strip.opp { border-bottom: 1px solid var(--line); height: calc(var(--ch) * 0.55 + 16px); }
+.strip.me { border-top: 1px solid var(--line); height: calc(var(--ch) + 22px); }
+.piles { display: flex; gap: 8px; height: 100%; align-items: center; }
+.pile {
+  position: relative;
+  width: calc(var(--cw) * 0.8);
+  height: calc(var(--ch) * 0.8);
+  border: 1px dashed #464c54;
+  border-radius: calc(var(--cw) * 0.05);
+  cursor: pointer;
+  flex: none;
+}
+.strip.opp .pile { width: calc(var(--cw) * 0.55); height: calc(var(--ch) * 0.55); }
+.pile > img, .pile > .cback, .pile > .tcard {
+  position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit;
+}
+.pile .count {
+  position: absolute;
+  bottom: -2px; right: -2px;
+  background: rgba(10, 12, 14, 0.85);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.pile .lbl {
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  transform: translateY(-50%);
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.pile.has .lbl { display: none; }
+.pile.drop-hot, #hand.drop-hot { outline: 2px solid var(--accent); outline-offset: 2px; }
+.who { margin-left: auto; text-align: right; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.who b { color: var(--text); font-size: 14px; }
+
+#hand {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0 4px;
+  border-radius: 8px;
+}
+#hand .card { position: relative; flex: none; transition: transform 0.1s; }
+#hand .card:hover { transform: translateY(-8px); z-index: 50; }
+#hand .empty { color: var(--muted); font-size: 13px; padding-left: 8px; }
+#oppHand { flex: 1; display: flex; align-items: center; gap: 0; min-width: 0; height: 100%; }
+#oppHand .cback {
+  width: calc(var(--cw) * 0.42);
+  height: calc(var(--ch) * 0.42);
+  border-radius: 4px;
+  margin-right: -8px;
+  flex: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+#oppHand .n { margin-left: 16px; color: var(--muted); font-size: 13px; }
+
+/* ---------- Table ---------- */
+#table { position: relative; flex: 1; overflow: hidden; min-height: 0; }
+.half { position: absolute; left: 0; right: 0; height: 50%; }
+#oppHalf { top: 0; background: var(--table-opp); }
+#myHalf { bottom: 0; background: var(--table-me); border-top: 1px solid #2f343a; }
+#myHalf.drop-hot { box-shadow: inset 0 0 0 2px var(--accent); }
+.half .tag {
+  position: absolute;
+  right: 10px;
+  font-size: 12px;
+  color: #59616b;
+  pointer-events: none;
+}
+#oppHalf .tag { top: 6px; }
+#myHalf .tag { bottom: 6px; }
+
+/* ---------- Cards ---------- */
+.card {
+  width: var(--cw);
+  height: calc(var(--cw) / 0.716);
+  border-radius: calc(var(--cw) * 0.05);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+  background: #2a2e33;
+  cursor: grab;
+}
+.card > img, .card > .cback, .card > .tcard {
+  display: block; width: 100%; height: 100%; border-radius: inherit; pointer-events: none;
+}
+.card > img.r180 { transform: rotate(180deg); }
+.card.bfc { position: absolute; transition: transform 0.12s ease; }
+.card.bfc.tapped { transform: rotate(90deg); }
+.card.bfc.dragging { transition: none; cursor: grabbing; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); }
+.card.opp { cursor: default; }
+.card:hover { box-shadow: 0 0 0 2px var(--accent), 0 2px 8px rgba(0, 0, 0, 0.6); }
+.card.ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9000;
+  opacity: 0.92;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
+}
+.card.lifting { opacity: 0.35; }
+body.attaching .card.bfc { cursor: crosshair; }
+body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
+.cback {
+  background:
+    radial-gradient(circle at 50% 50%, #c9a24a 0 7%, transparent 7.5%),
+    radial-gradient(circle at 50% 50%, #1b2233 0 16%, transparent 16.5%),
+    radial-gradient(circle at 50% 50%, #c9a24a 0 18%, transparent 18.5%),
+    repeating-linear-gradient(45deg, #233049 0 5px, #2a3a58 5px 10px);
+  border: 3px solid #10141c;
+}
+.cback.big { width: 100%; aspect-ratio: 0.716; border-radius: 4.5%; border-width: 8px; }
+.tcard {
+  background: linear-gradient(#3a4049, #2a2e34);
+  border: 3px solid #111;
+  padding: 6%;
+  display: flex !important;
+  flex-direction: column;
+  gap: 4%;
+  overflow: hidden;
+  font-size: calc(var(--cw) * 0.11);
+  line-height: 1.15;
+}
+.tcard b { font-size: 1.05em; }
+.tcard span { color: #b8c0c9; font-size: 0.9em; }
+.tcard em { margin-top: auto; align-self: flex-end; font-style: normal; font-weight: 700; font-size: 1.3em; }
+.fdmark {
+  position: absolute; top: 4px; left: 4px;
+  font-size: 10px; background: rgba(0, 0, 0, 0.7); border-radius: 3px; padding: 0 4px; color: #f2c94c;
+}
+.ctrs {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.ctr {
+  background: rgba(12, 14, 17, 0.9);
+  border: 1px solid #5b636d;
+  color: #fff;
+  border-radius: 10px;
+  padding: 0 7px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ctr.p1 { border-color: var(--good); }
+.ctr.m1 { border-color: var(--danger); }
+.ctr.loy { border-color: #c9a24a; }
+.card.opp .ctr { cursor: default; }
+.card.tapped .ctrs { transform: translateX(-50%) rotate(-90deg); }
+
+/* ---------- Sidebar ---------- */
+#preview { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+#preview img, #preview .tcard, #preview .cback { width: 100%; aspect-ratio: 0.716; border-radius: 4.5%; display: block; }
+#preview .pv-main { width: 100%; }
+#preview .pv-other { width: 60%; opacity: 0.9; }
+#preview .tcard { font-size: 18px; }
+#preview .empty {
+  width: 100%; aspect-ratio: 0.716; border: 1px dashed var(--line); border-radius: 4.5%;
+  display: flex; align-items: center; justify-content: center; text-align: center; color: var(--muted); padding: 20px;
+}
+.pv-cap { color: #f2c94c; font-size: 12px; }
+.lifebox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.lifebox .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 13px; }
+.lifebox .life { font-size: 26px; font-weight: 700; min-width: 44px; text-align: center; cursor: pointer; }
+.lifebox button { padding: 2px 9px; font-weight: 700; }
+.lifebox.me { border-color: #3d5e94; }
+.lifebox[hidden], .piles[hidden] { display: none; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.actions button { text-align: left; display: flex; justify-content: space-between; align-items: center; }
+.actions button kbd { font-size: 11px; }
+.actions .wide { grid-column: span 2; }
+.side-note { color: var(--muted); font-size: 12px; text-align: center; }
+
+/* ---------- Menus ---------- */
+.menu {
+  position: fixed;
+  z-index: 9500;
+  min-width: 190px;
+  background: #24282d;
+  border: 1px solid #454b53;
+  border-radius: 8px;
+  padding: 4px;
+  margin: 0;
+  list-style: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+.menu li {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.menu li:hover { background: var(--accent-soft); }
+.menu li.dis { opacity: 0.4; pointer-events: none; }
+.menu li .k { color: var(--muted); font-size: 12px; }
+.menu li.sub::after { content: "›"; color: var(--muted); }
+.menu li.head { color: var(--muted); font-size: 12px; cursor: default; padding-top: 2px; padding-bottom: 2px; }
+.menu li.head:hover { background: none; }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
+.menu .menu { display: none; position: absolute; left: 100%; top: -5px; }
+.menu li.sub:hover > .menu { display: block; }
+.menu .menu.flip { left: auto; right: 100%; }
+
+/* ---------- Modals & panels ---------- */
+.overlay, .modal-back {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 9, 11, 0.72);
+  z-index: 8000;
+}
+.overlay { background: rgba(8, 9, 11, 0.86); z-index: 7000; }
+.overlay[hidden] { display: none; }
+.panel, .modal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+}
+.panel { width: min(640px, calc(100vw - 40px)); padding: 22px; gap: 14px; overflow-y: auto; }
+.panel h2, .modal h3 { margin: 0; }
+.panel p { margin: 0; color: var(--muted); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row.end { justify-content: flex-end; }
+.lobby-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.choice { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.choice h4 { margin: 0; }
+.choice p { font-size: 13px; }
+#joinCode { text-transform: uppercase; letter-spacing: 3px; font-family: ui-monospace, monospace; width: 110px; }
+#deckText { width: 100%; min-height: 260px; resize: vertical; font: 13px/1.45 ui-monospace, monospace; }
+.msg { font-size: 13px; color: var(--muted); }
+.msg.err { color: #ff8b84; }
+.msg.ok { color: #7ee08f; }
+.opp-status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.modal { width: min(560px, calc(100vw - 40px)); }
+.modal.wide { width: min(1100px, calc(100vw - 40px)); }
+.modal-head { padding: 14px 18px 0; display: flex; align-items: center; gap: 10px; }
+.modal-head h3 { flex: 1; font-size: 17px; }
+.modal-body { padding: 14px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.modal-foot { padding: 0 18px 16px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.grid { display: flex; flex-wrap: wrap; gap: 10px; }
+.grid .card { position: relative; cursor: pointer; }
+.grid .card.sel { box-shadow: 0 0 0 3px #f2c94c; }
+.grid .item { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.grid .item select { width: var(--cw); padding: 2px; font-size: 12px; }
+.grid .item .arrows { display: flex; gap: 4px; }
+.grid .item .arrows button { padding: 0 8px; }
+.grid .empty { color: var(--muted); }
+.grid.big { --cw: 140px; }
+.grid.mid { --cw: 110px; }
+.tok-results { --cw: 110px; max-height: 50vh; overflow-y: auto; }
+.custom-tok { display: grid; grid-template-columns: 2fr 1fr 2fr auto; gap: 8px; }
+.ctr-row { display: flex; align-items: center; gap: 8px; }
+.ctr-row .nm { flex: 1; }
+.ctr-row .v { min-width: 30px; text-align: center; font-weight: 700; }
+
+/* sideboarding */
+.sb-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; min-height: 0; }
+.sb-col { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px; max-height: 52vh; overflow-y: auto; }
+.sb-col h4 { margin: 2px 4px 8px; display: flex; justify-content: space-between; }
+.sb-col h4 span { color: var(--muted); font-weight: 400; }
+.sb-row { display: flex; gap: 8px; padding: 3px 6px; border-radius: 5px; cursor: pointer; }
+.sb-row:hover { background: var(--accent-soft); }
+.sb-row .q { color: var(--muted); min-width: 22px; }
+.sb-row .ty { margin-left: auto; color: #6c7580; font-size: 12px; }
+.score-big { font-size: 18px; }
+.score-big b { color: var(--accent); }
+
+/* toasts, banners, help */
+#toasts {
+  position: fixed;
+  left: calc(50% - 150px);
+  top: 56px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 9800;
+  pointer-events: none;
+}
+.toast {
+  background: #2c3036;
+  border: 1px solid #4a515a;
+  border-radius: 8px;
+  padding: 8px 14px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  animation: tin 0.15s ease-out;
+  max-width: 520px;
+}
+.toast.big { font-size: 16px; font-weight: 600; border-color: var(--accent); }
+@keyframes tin { from { opacity: 0; transform: translateY(-6px); } }
+#banner {
+  position: fixed;
+  top: 52px;
+  left: calc(50% - 150px);
+  transform: translateX(-50%);
+  background: #4a3b10;
+  border: 1px solid #c9a24a;
+  color: #ffe9b0;
+  padding: 6px 14px;
+  border-radius: 8px;
+  z-index: 9700;
+}
+#banner[hidden] { display: none; }
+.help-grid { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 6px 12px; align-items: center; font-size: 13px; }
+.help-grid kbd { justify-self: end; }
+.help-mouse { font-size: 13px; color: var(--muted); margin: 0; padding-left: 18px; }
+
+</style>
+</head>
+<body>
+<header id="top">
+  <div class="brand">Cube <span>Playtester</span></div>
+  <div id="status"></div>
+  <div class="spacer"></div>
+  <div id="scoreline"></div>
+  <div class="sizer" title="Card size">
+    <button id="smaller" title="Smaller cards">A−</button>
+    <button id="bigger" title="Bigger cards">A+</button>
+  </div>
+  <button id="helpBtn" title="Shortcuts (?)">?</button>
+</header>
+
+<main id="app">
+  <section id="play">
+    <div id="oppStrip" class="strip opp">
+      <div class="piles">
+        <div class="pile" id="oppLib" title="Opponent's library"></div>
+        <div class="pile" id="oppGy" title="Opponent's graveyard (click to view)"></div>
+        <div class="pile" id="oppEx" title="Opponent's exile (click to view)"></div>
+      </div>
+      <div id="oppHand"></div>
+      <div class="who" id="oppWho"></div>
+    </div>
+    <div id="table">
+      <div id="oppHalf" class="half"><div class="tag" id="oppTag"></div></div>
+      <div id="myHalf" class="half"><div class="tag">Your battlefield</div></div>
+    </div>
+    <div id="myStrip" class="strip me">
+      <div class="piles">
+        <div class="pile" id="myLib" title="Library: click to draw, right-click for more"></div>
+        <div class="pile" id="myGy" title="Graveyard: click to view"></div>
+        <div class="pile" id="myEx" title="Exile: click to view"></div>
+      </div>
+      <div id="hand"></div>
+      <div class="who" id="myWho"></div>
+    </div>
+  </section>
+
+  <aside id="side">
+    <div id="preview"><div class="empty">Hover a card to see it here</div></div>
+    <div class="lifebox" id="oppLife"></div>
+    <div class="lifebox me" id="myLife"></div>
+    <div class="actions" id="actions">
+      <button data-act="draw">Draw <kbd>D</kbd></button>
+      <button data-act="untap">Untap all <kbd>U</kbd></button>
+      <button data-act="shuffle">Shuffle <kbd>S</kbd></button>
+      <button data-act="token">Token <kbd>N</kbd></button>
+      <button data-act="dice">Dice &amp; coin <kbd>R</kbd></button>
+      <button data-act="tidy">Tidy <kbd>Y</kbd></button>
+      <button data-act="sideboard">Sideboard</button>
+      <button data-act="hand">Hand…</button>
+      <button data-act="endgame" class="wide">End game…</button>
+    </div>
+  </aside>
+</main>
+
+<div class="overlay" id="lobby" hidden>
+  <div class="panel">
+    <h2>Cube Playtester</h2>
+    <p>Two players, one table. One person hosts and shares the room code; the other joins with it.</p>
+    <div class="row">
+      <label for="myName">Your name</label>
+      <input id="myName" maxlength="24" placeholder="e.g. David" autocomplete="off">
+    </div>
+    <div class="lobby-choices">
+      <div class="choice">
+        <h4>Host a game</h4>
+        <p>Get a room code to send to your opponent.</p>
+        <div class="row"><button class="primary" id="hostBtn">Host</button></div>
+      </div>
+      <div class="choice">
+        <h4>Join a game</h4>
+        <p>Enter the code your opponent sent you.</p>
+        <div class="row"><input id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off"><button class="primary" id="joinBtn">Join</button></div>
+      </div>
+    </div>
+    <div class="row"><button class="ghost" id="soloBtn">Practice solo (no opponent)</button></div>
+    <div class="msg" id="lobbyMsg"></div>
+  </div>
+</div>
+
+<div class="overlay" id="deckPanel" hidden>
+  <div class="panel">
+    <h2>Load your deck</h2>
+    <p>Paste a decklist, one card per line, like <code>1 Lightning Bolt</code>. Put your sideboard after a line that says <code>Sideboard</code> (or after a blank line). Set codes and collector numbers are fine.</p>
+    <textarea id="deckText" spellcheck="false" placeholder="1 Lightning Bolt
+1 Snapcaster Mage
+8 Mountain
+8 Island
+
+Sideboard
+1 Pyroblast"></textarea>
+    <div class="row">
+      <button id="loadDeckBtn">Load deck</button>
+      <div class="msg" id="deckMsg"></div>
+    </div>
+    <div class="opp-status" id="oppDeckStatus"></div>
+    <div class="row end">
+      <button class="primary" id="readyBtn" disabled>Ready</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="sbPanel" hidden>
+  <div class="panel" style="width:min(820px,calc(100vw - 40px))">
+    <h2 id="sbTitle">Sideboarding</h2>
+    <div class="score-big" id="sbScore"></div>
+    <p>Click a card to move one copy between your deck and sideboard.</p>
+    <div class="sb-cols">
+      <div class="sb-col" id="sbMain"></div>
+      <div class="sb-col" id="sbSide"></div>
+    </div>
+    <div class="opp-status" id="sbOppStatus"></div>
+    <div class="row">
+      <button class="ghost" id="editDeckBtn">Paste a different list</button>
+      <button class="ghost" id="resetScoreBtn">Reset match score</button>
+      <div class="spacer"></div>
+      <button class="primary" id="sbReadyBtn">Ready</button>
+    </div>
+  </div>
+</div>
+
+<div id="banner" hidden></div>
+<div id="modals"></div>
+<div id="toasts"></div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+'use strict';
+(() => {
+  /* =====================================================================
+   * Cube Playtester: two-player peer-to-peer MTG table.
+   * Each player's browser is the authority for its own cards. After every
+   * change it sends the opponent a "public" snapshot (battlefield, piles,
+   * counts). Hidden info is honor-system: hands travel only as counts.
+   * ===================================================================== */
+
+  const PREFIX = 'cubeplaytest-v1-';
+  const START_LIFE = 20;
+  const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const params = new URLSearchParams(location.search);
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const rnd = (n) => { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; };
+  const shuffle = (arr) => { for (let i = arr.length - 1; i > 0; i--) { const j = rnd(i + 1); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+  const other = (r) => (r === 'host' ? 'guest' : 'host');
+  const store = {
+    get(k) { try { return localStorage.getItem('cubept.' + k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem('cubept.' + k, v); } catch (e) { /* storage unavailable */ } },
+  };
+
+  /* ---------------------------- state ---------------------------- */
+  const emptyZones = () => ({ library: [], hand: [], battlefield: [], graveyard: [], exile: [], sideboard: [] });
+  const S = {
+    phase: 'lobby', // lobby | deck | playing | sideboard
+    role: null, // host | guest
+    solo: false,
+    myName: '',
+    peer: null,
+    conn: null,
+    connected: false,
+    everConnected: false,
+    code: '',
+    deck: null, // { main: [tpl], side: [tpl] }
+    cards: {},
+    z: emptyZones(),
+    life: START_LIFE,
+    game: 0,
+    seq: 0,
+    zTop: 1,
+    mull: 0,
+    opp: null,
+    meReady: false,
+    score: { host: 0, guest: 0, draw: 0 },
+    lastLoser: null,
+    hover: null,
+    attaching: null,
+    scale: Number(store.get('scale')) || 1,
+    viewer: null,
+  };
+  const emptyOpp = (name) => ({ name: name || 'Opponent', life: START_LIFE, hand: 0, library: 0, side: 0, bf: [], gy: [], ex: [], hasDeck: false, ready: false, inGame: false });
+  const oppName = () => (S.opp && S.opp.name) || 'Opponent';
+  const meRole = () => S.role;
+
+  /* ---------------------------- cards ---------------------------- */
+  function makeCard(tpl, extra = {}) {
+    const id = (S.role === 'guest' ? 'g' : 'h') + S.game + '-' + ++S.seq;
+    const c = {
+      id, owner: S.role, name: tpl.name, img: tpl.img || null, big: tpl.big || null, type: tpl.type || '',
+      back: tpl.back || null, text: tpl.text || null, loyalty: tpl.loyalty || null, token: false,
+      x: 0, y: 0, z: 0, tapped: false, transformed: false, faceDown: false, rot: false, counters: {}, attachedTo: null,
+      ...extra,
+    };
+    S.cards[id] = c;
+    return c;
+  }
+  const curFace = (d) => (d.transformed && d.back ? d.back : { name: d.name, img: d.img, big: d.big, type: d.type, text: d.text });
+  const otherFace = (d) => (!d.back ? null : d.transformed ? { name: d.name, img: d.img, big: d.big, type: d.type, text: d.text } : d.back);
+  const tplOf = (c) => ({ name: c.name, img: c.img, big: c.big, type: c.type, back: c.back, text: c.text, loyalty: c.loyalty });
+  const visibleName = (c) => (c.faceDown ? 'a face-down card' : curFace(c).name);
+
+  function zoneOf(id) { for (const k in S.z) if (S.z[k].includes(id)) return k; return null; }
+  function removeFrom(id) { const k = zoneOf(id); if (k) S.z[k].splice(S.z[k].indexOf(id), 1); return k; }
+  function resetCard(c, opt = {}) {
+    c.tapped = !!opt.tapped; c.counters = {}; c.attachedTo = null; c.transformed = false; c.rot = false; c.faceDown = !!opt.faceDown;
+  }
+  function detachFrom(hostId) {
+    S.z.battlefield.forEach((i) => { const a = S.cards[i]; if (a.attachedTo === hostId) { a.attachedTo = null; autoPlace(a); } });
+  }
+
+  /** Moves one of my cards to a zone. opt: {pos: top|bottom|shuffle, x, y, faceDown, tapped, quiet} */
+  function moveCard(id, zone, opt = {}) {
+    const c = S.cards[id];
+    if (!c) return;
+    const from = removeFrom(id);
+    if (from === 'battlefield' && zone !== 'battlefield') detachFrom(id);
+    resetCard(c, opt);
+    if (c.token && zone !== 'battlefield') { delete S.cards[id]; if (!opt.quiet) changed(); return; }
+    if (c.owner !== S.role && zone !== 'battlefield') {
+      send({ t: 'return', card: c, zone, pos: opt.pos || 'top' });
+      delete S.cards[id];
+      if (!opt.quiet) changed();
+      return;
+    }
+    putInZone(c, zone, opt);
+    if (!opt.quiet) changed();
+  }
+  function putInZone(c, zone, opt = {}) {
+    const list = S.z[zone];
+    if (zone === 'library') {
+      if (opt.pos === 'bottom') list.push(c.id);
+      else if (opt.pos === 'shuffle') { list.push(c.id); shuffle(list); }
+      else list.unshift(c.id);
+    } else list.push(c.id);
+    if (zone === 'battlefield') {
+      c.z = ++S.zTop;
+      if (opt.x != null) { c.x = opt.x; c.y = opt.y; } else autoPlace(c);
+      if (c.loyalty && !c.faceDown && !c.token) c.counters.loyalty = Number(c.loyalty) || 0;
+    }
+  }
+
+  function drawN(n, quiet) {
+    let drawn = 0;
+    for (let i = 0; i < n; i++) {
+      if (!S.z.library.length) { toast('Your library is empty.'); break; }
+      S.z.hand.push(S.z.library.shift());
+      drawn++;
+    }
+    if (!quiet) changed();
+    return drawn;
+  }
+
+  /* ---------------------------- geometry ---------------------------- */
+  const G = { W: 0, H: 0, half: 0, cw: 80, ch: 112 };
+  function sizeCards() {
+    const avail = window.innerHeight - 44;
+    let ch = ((avail - 90) / 7.2) * S.scale;
+    ch = clamp(ch, 50, 200);
+    G.cw = Math.round(ch * 0.716);
+    G.ch = Math.round(G.cw / 0.716);
+    document.documentElement.style.setProperty('--cw', G.cw + 'px');
+  }
+  function measure() {
+    const r = $('#table').getBoundingClientRect();
+    G.W = r.width; G.H = r.height; G.half = r.height / 2; G.left = r.left; G.top = r.top;
+  }
+  const spanX = () => Math.max(1, G.W - G.cw);
+  const spanY = () => Math.max(1, G.half - 8 - G.ch);
+  const myPos = (c) => ({ left: c.x * spanX(), top: G.half + 4 + c.y * spanY() });
+  const oppPos = (c) => ({ left: (1 - c.x) * spanX(), top: G.half - 4 - G.ch - c.y * spanY() });
+  const toNorm = (left, top) => ({ x: clamp(left / spanX(), 0, 1), y: clamp((top - G.half - 4) / spanY(), 0, 1) });
+
+  const ROW_Y = [0.03, 0.5, 0.97];
+  function rowOf(c) {
+    if (c.faceDown) return 0;
+    const t = curFace(c).type || '';
+    if (/Creature/.test(t)) return 0;
+    if (/\bLand\b/.test(t)) return 2;
+    return 1;
+  }
+  function autoPlace(c) {
+    const row = rowOf(c);
+    c.y = ROW_Y[row];
+    const step = (G.cw + 8) / spanX();
+    const taken = S.z.battlefield
+      .map((i) => S.cards[i])
+      .filter((o) => o && o.id !== c.id && !o.attachedTo && Math.abs(o.y - c.y) < 0.25)
+      .map((o) => o.x);
+    let x = 0;
+    for (let k = 0; ; k++) {
+      x = k * step;
+      if (x > 1) { x = Math.random(); break; }
+      if (!taken.some((t) => Math.abs(t - x) < step * 0.7)) break;
+    }
+    c.x = clamp(x, 0, 1);
+  }
+  function tidy() {
+    const rows = [[], [], []];
+    S.z.battlefield.map((i) => S.cards[i]).filter((c) => !c.attachedTo).forEach((c) => rows[rowOf(c)].push(c));
+    rows.forEach((cards, r) => {
+      cards.sort((a, b) => (curFace(a).name || '').localeCompare(curFace(b).name || '') || a.id.localeCompare(b.id));
+      const n = cards.length;
+      const stepPx = n > 1 ? Math.min(G.cw + 10, spanX() / (n - 1)) : 0;
+      cards.forEach((c, k) => { c.x = clamp((k * stepPx) / spanX(), 0, 1); c.y = ROW_Y[r]; c.z = ++S.zTop; });
+    });
+    changed();
+  }
+
+  /* ---------------------------- network ---------------------------- */
+  function peerOptions() {
+    const o = { debug: 1 };
+    if (params.get('peerhost')) {
+      o.host = params.get('peerhost');
+      o.port = Number(params.get('peerport')) || 9000;
+      o.path = params.get('peerpath') || '/';
+      o.secure = params.get('peersecure') === '1';
+    }
+    return o;
+  }
+  const newCode = () => Array.from({ length: 5 }, () => CODE_CHARS[rnd(CODE_CHARS.length)]).join('');
+
+  function host() {
+    if (!window.Peer) return lobbyMsg('Could not load the connection library. Check your internet connection and reload.', true);
+    S.role = 'host';
+    S.code = newCode();
+    lobbyMsg('Opening a room…');
+    const peer = new Peer(PREFIX + S.code, peerOptions());
+    S.peer = peer;
+    peer.on('open', () => {
+      S.opp = null;
+      setPhase('deck');
+      toast('Room open. Send your opponent the code ' + S.code + '.', 6000);
+    });
+    peer.on('connection', (c) => {
+      if (S.conn && S.connected) {
+        c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 400); });
+        return;
+      }
+      setupConn(c);
+    });
+    peer.on('error', (e) => {
+      if (e.type === 'unavailable-id') { peer.destroy(); host(); return; }
+      if (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error') banner('Lost contact with the connection server. Your current opponent link may still work.');
+      else if (S.phase === 'lobby') lobbyMsg('Could not open a room: ' + (e.message || e.type), true);
+    });
+  }
+
+  function join(code) {
+    if (!window.Peer) return lobbyMsg('Could not load the connection library. Check your internet connection and reload.', true);
+    code = code.trim().toUpperCase();
+    if (code.length !== 5) return lobbyMsg('Room codes are 5 characters.', true);
+    S.role = 'guest';
+    S.code = code;
+    lobbyMsg('Connecting…');
+    const peer = new Peer(peerOptions());
+    S.peer = peer;
+    const timer = setTimeout(() => {
+      if (!S.connected) lobbyMsg('Still trying… If this doesn’t connect, one of your networks may block direct connections.', true);
+    }, 15000);
+    peer.on('open', () => {
+      const c = peer.connect(PREFIX + code, { reliable: true, serialization: 'json' });
+      setupConn(c, () => clearTimeout(timer));
+    });
+    peer.on('error', (e) => {
+      clearTimeout(timer);
+      if (e.type === 'peer-unavailable') lobbyMsg('No open room with code ' + code + '. Check the code with your opponent.', true);
+      else lobbyMsg('Connection problem: ' + (e.message || e.type), true);
+      if (S.phase === 'lobby') { S.role = null; peer.destroy(); }
+    });
+  }
+
+  function setupConn(c, onOpen) {
+    S.conn = c;
+    c.on('open', () => {
+      if (onOpen) onOpen();
+      S.connected = true;
+      S.everConnected = true;
+      S.opp = S.opp || emptyOpp();
+      banner(null);
+      send({ t: 'hello', name: S.myName });
+      if (S.phase === 'lobby') setPhase('deck');
+      syncNow();
+      render();
+    });
+    c.on('data', (m) => { try { onMessage(m); } catch (err) { console.error('Bad message', m, err); } });
+    c.on('close', () => {
+      if (S.conn !== c) return;
+      S.connected = false;
+      S.conn = null;
+      banner(oppName() + ' disconnected. ' + (S.role === 'host' ? 'They can rejoin with code ' + S.code + '.' : 'Ask them for a new code and reload this page.'));
+      render();
+    });
+    c.on('error', (e) => console.warn('connection error', e));
+  }
+
+  function send(m) { if (S.conn && S.connected) { try { S.conn.send(m); } catch (e) { console.warn(e); } } }
+
+  let syncTimer = null;
+  let lastSync = 0;
+  function scheduleSync(throttled) {
+    if (!S.connected || syncTimer) return;
+    const wait = throttled ? Math.max(0, 70 - (Date.now() - lastSync)) : 0;
+    syncTimer = setTimeout(syncNow, wait);
+  }
+  function syncNow() {
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    lastSync = Date.now();
+    send({ t: 'state', s: pubState() });
+  }
+  function pubCard(c) {
+    const o = { id: c.id, owner: c.owner, x: c.x, y: c.y, z: c.z, tapped: c.tapped, rot: c.rot, counters: c.counters, attachedTo: c.attachedTo, token: c.token, faceDown: c.faceDown };
+    if (!c.faceDown) Object.assign(o, { name: c.name, img: c.img, big: c.big, type: c.type, back: c.back, transformed: c.transformed, text: c.text });
+    return o;
+  }
+  const revealCard = (c) => ({ ...pubCard({ ...c, faceDown: false }) });
+  function pubState() {
+    return {
+      name: S.myName, life: S.life, hand: S.z.hand.length, library: S.z.library.length, side: S.z.sideboard.length,
+      bf: S.z.battlefield.map((i) => pubCard(S.cards[i])),
+      gy: S.z.graveyard.map((i) => pubCard(S.cards[i])),
+      ex: S.z.exile.map((i) => pubCard(S.cards[i])),
+      hasDeck: !!S.deck, ready: S.meReady, inGame: S.phase === 'playing', game: S.game,
+    };
+  }
+
+  function onMessage(m) {
+    if (!m || typeof m !== 'object') return;
+    switch (m.t) {
+      case 'hello':
+        S.opp = S.opp || emptyOpp();
+        S.opp.name = String(m.name || 'Opponent').slice(0, 24);
+        toast(S.opp.name + ' joined the table.');
+        render();
+        break;
+      case 'full':
+        lobbyMsg('That room already has two players.', true);
+        break;
+      case 'state': {
+        const s = m.s || {};
+        S.opp = { ...emptyOpp(), ...s, name: String(s.name || oppName()).slice(0, 24) };
+        maybeStart();
+        render();
+        break;
+      }
+      case 'start':
+        startGame(m.game, m.first);
+        break;
+      case 'result':
+        applyResult(m.winner);
+        break;
+      case 'resetScore':
+        S.score = { host: 0, guest: 0, draw: 0 }; S.lastLoser = null; render();
+        toast(oppName() + ' reset the match score.');
+        break;
+      case 'give': {
+        const c = m.card;
+        if (!c || !c.id) return;
+        c.attachedTo = null;
+        S.cards[c.id] = c;
+        S.z.battlefield.push(c.id);
+        c.z = ++S.zTop;
+        autoPlace(c);
+        toast('You gained control of ' + visibleName(c) + '.');
+        changed();
+        break;
+      }
+      case 'take':
+        if (S.z.battlefield.includes(m.id)) {
+          const c = S.cards[m.id];
+          toast(oppName() + ' took control of ' + visibleName(c) + '.');
+          giveControl(m.id, true);
+        }
+        break;
+      case 'return': {
+        const c = m.card;
+        if (!c || !c.id) return;
+        resetCard(c);
+        S.cards[c.id] = c;
+        const zone = ['hand', 'graveyard', 'exile', 'library', 'battlefield'].includes(m.zone) ? m.zone : 'graveyard';
+        putInZone(c, zone, { pos: m.pos });
+        changed();
+        break;
+      }
+      case 'reveal':
+        showReveal(m.title, m.cards || []);
+        break;
+      case 'toast':
+        toast(String(m.text || ''), m.big ? 6000 : 4000, m.big);
+        break;
+      case 'life':
+        S.life += Number(m.d) || 0;
+        changed();
+        break;
+      default:
+        break;
+    }
+  }
+
+  /* ---------------------------- game flow ---------------------------- */
+  function setPhase(p) {
+    S.phase = p;
+    if (p === 'deck') {
+      const saved = store.get('deck');
+      if (saved && !$('#deckText').value) $('#deckText').value = saved;
+    }
+    if (p === 'sideboard') renderSideboard();
+    render();
+    syncNow();
+  }
+
+  function setReady(v) {
+    S.meReady = v;
+    if (S.solo && v) { startGame(S.game + 1, 'host'); return; }
+    syncNow();
+    maybeStart();
+    render();
+  }
+  function maybeStart() {
+    if (S.role !== 'host' || S.solo || S.phase === 'playing') return;
+    if (!S.meReady || !S.opp || !S.opp.ready || !S.connected) return;
+    const first = S.lastLoser || (rnd(2) ? 'host' : 'guest');
+    const g = S.game + 1;
+    send({ t: 'start', game: g, first });
+    startGame(g, first);
+  }
+
+  function startGame(g, first) {
+    S.game = g;
+    S.phase = 'playing';
+    S.meReady = false;
+    S.cards = {};
+    S.z = emptyZones();
+    S.life = START_LIFE;
+    S.seq = 0;
+    S.mull = 0;
+    S.attaching = null;
+    S.viewer = null;
+    closeAllModals();
+    S.deck.main.forEach((t) => S.z.library.push(makeCard(t).id));
+    S.deck.side.forEach((t) => S.z.sideboard.push(makeCard(t).id));
+    shuffle(S.z.library);
+    drawN(7, true);
+    render();
+    syncNow();
+    if (!S.solo) toast('Game ' + g + ': ' + (first === S.role ? 'you play first.' : oppName() + ' plays first.'), 6000, true);
+    openMulligan();
+  }
+
+  function applyResult(w) {
+    if (!['host', 'guest', 'draw'].includes(w)) return;
+    S.score[w]++;
+    S.lastLoser = w === 'draw' ? null : other(w);
+    S.meReady = false;
+    closeAllModals();
+    S.viewer = null;
+    const who = w === 'draw' ? 'Game ' + S.game + ' was a draw.' : (w === S.role ? 'You won' : oppName() + ' won') + ' game ' + S.game + '.';
+    toast(who, 5000, true);
+    setPhase('sideboard');
+  }
+
+  /* ---------------------------- actions ---------------------------- */
+  function changed() { render(); scheduleSync(); }
+  const inGame = () => S.phase === 'playing';
+
+  function shout(text, big) { toast(text, big ? 6000 : 4000, big); send({ t: 'toast', text, big: !!big }); }
+
+  function toggleTap(id) { const c = S.cards[id]; if (c && zoneOf(id) === 'battlefield') { c.tapped = !c.tapped; changed(); } }
+  function untapAll() { S.z.battlefield.forEach((i) => { S.cards[i].tapped = false; }); changed(); }
+  function shuffleLibrary() { shuffle(S.z.library); toast('Library shuffled.'); changed(); }
+  function transform(id) { const c = S.cards[id]; if (c && c.back) { c.transformed = !c.transformed; changed(); } }
+  function toggleFaceDown(id) { const c = S.cards[id]; if (c) { c.faceDown = !c.faceDown; if (c.faceDown) c.transformed = false; changed(); } }
+  function rotate180(id) { const c = S.cards[id]; if (c) { c.rot = !c.rot; changed(); } }
+  function addCounter(id, kind, d) {
+    const c = S.cards[id];
+    if (!c) return;
+    const v = (c.counters[kind] || 0) + d;
+    if (v <= 0 && kind !== 'loyalty') delete c.counters[kind];
+    else c.counters[kind] = Math.max(0, v);
+    changed();
+  }
+  function playFromHand(id, opt = {}) { moveCard(id, 'battlefield', opt); }
+  function copyCard(id) {
+    const c = S.cards[id];
+    if (!c) return;
+    const t = makeCard(tplOf(c), { token: true });
+    putInZone(t, 'battlefield', { x: clamp(c.x + (G.cw * 0.35) / spanX(), 0, 1), y: c.y });
+    t.counters = {};
+    t.transformed = c.transformed;
+    changed();
+  }
+  function giveControl(id, silent) {
+    const c = S.cards[id];
+    if (!c) return;
+    removeFrom(id);
+    detachFrom(id);
+    delete S.cards[id];
+    c.attachedTo = null;
+    send({ t: 'give', card: c });
+    if (!silent) toast('Gave ' + oppName() + ' control of ' + visibleName(c) + '.');
+    changed();
+  }
+  function startAttach(id) {
+    S.attaching = id;
+    document.body.classList.add('attaching');
+    banner('Click the card to attach ' + visibleName(S.cards[id]) + ' to. Esc cancels.');
+  }
+  function finishAttach(targetId) {
+    const id = S.attaching;
+    cancelAttach();
+    if (!id || id === targetId || !S.cards[id]) return;
+    const host = S.cards[targetId];
+    if (host && host.attachedTo === id) return;
+    S.cards[id].attachedTo = targetId;
+    S.cards[id].z = (host ? host.z : S.zTop) || 1;
+    changed();
+  }
+  function cancelAttach() { S.attaching = null; document.body.classList.remove('attaching'); banner(null); }
+  function detach(id) { const c = S.cards[id]; if (c) { c.attachedTo = null; autoPlace(c); c.z = ++S.zTop; changed(); } }
+
+  function randomDiscard() {
+    if (!S.z.hand.length) return toast('Your hand is empty.');
+    const id = S.z.hand[rnd(S.z.hand.length)];
+    const name = S.cards[id].name;
+    moveCard(id, 'graveyard');
+    shout(S.myName + ' discarded ' + name + ' at random.');
+  }
+  function reveal(title, ids) {
+    const cards = ids.map((i) => S.cards[i]).filter(Boolean).map(revealCard);
+    if (!cards.length) return toast('Nothing to reveal.');
+    if (S.solo) { showReveal(title, cards, true); return; }
+    send({ t: 'reveal', title: S.myName + ' reveals ' + title, cards });
+    toast('Revealed ' + title + ' to ' + oppName() + '.');
+  }
+  function shuffleHandIn() { S.z.hand.splice(0).forEach((id) => S.z.library.push(id)); shuffle(S.z.library); changed(); }
+  function mulliganAgain() { shuffleHandIn(); drawN(7, true); S.mull++; changed(); openMulligan(); }
+  function millN(n) { for (let i = 0; i < n && S.z.library.length; i++) moveCard(S.z.library[0], 'graveyard', { quiet: true }); changed(); }
+  function setLife(v) { S.life = v; changed(); }
+
+  function roll(sides) {
+    const v = rnd(sides) + 1;
+    shout(S.myName + ' rolled a d' + sides + ': ' + v, true);
+  }
+  function flipCoin() { shout(S.myName + ' flipped a coin: ' + (rnd(2) ? 'heads' : 'tails'), true); }
+
+  /* ---------------------------- Scryfall ---------------------------- */
+  function tplFrom(c) {
+    const faces = c.card_faces;
+    const t = { name: c.name, type: c.type_line || '', img: null, big: null, back: null, loyalty: c.loyalty || null };
+    if (c.image_uris) {
+      t.img = c.image_uris.normal; t.big = c.image_uris.large || c.image_uris.normal;
+      if (faces && faces[0]) t.type = faces[0].type_line || t.type;
+      if (faces && faces[0] && faces[0].loyalty) t.loyalty = faces[0].loyalty;
+    } else if (faces && faces[0] && faces[0].image_uris) {
+      const f = faces[0], b = faces[1];
+      t.name = f.name; t.type = f.type_line || ''; t.loyalty = f.loyalty || t.loyalty;
+      t.img = f.image_uris.normal; t.big = f.image_uris.large || f.image_uris.normal;
+      if (b && b.image_uris) t.back = { name: b.name, type: b.type_line || '', img: b.image_uris.normal, big: b.image_uris.large || b.image_uris.normal };
+    }
+    if (!t.img) t.text = { pt: c.power != null ? c.power + '/' + c.toughness : '' };
+    return t;
+  }
+
+  function parseList(text) {
+    const main = [], side = [];
+    const lines = text.replace(/\r/g, '').split('\n');
+    const explicit = lines.some((l) => /^\s*(\/\/\s*)?(sideboard|side ?board|sb)\s*:?\s*(\(\d+\))?\s*$/i.test(l));
+    let inSide = false, skip = false, sawCards = false, gap = false;
+    for (const raw of lines) {
+      let l = raw.trim();
+      if (!l) { if (sawCards) gap = true; continue; }
+      if (/^(\/\/\s*)?(sideboard|side ?board|sb)\s*:?\s*(\(\d+\))?\s*$/i.test(l)) { inSide = true; skip = false; continue; }
+      if (/^(\/\/\s*)?(maybe ?board|considering|tokens?)\s*:?\s*(\(\d+\))?$/i.test(l)) { skip = true; continue; }
+      if (/^(\/\/\s*)?(deck|main ?deck|main ?board|main|commander|companion|about|name .*)\s*:?\s*(\(\d+\))?$/i.test(l)) { skip = false; continue; }
+      if (/^(\/\/|#)/.test(l)) continue;
+      if (skip) continue;
+      let toSide = inSide || (!explicit && gap);
+      if (/^SB:\s*/i.test(l)) { toSide = true; l = l.replace(/^SB:\s*/i, ''); }
+      const m = l.match(/^(\d+)\s*[xX]?\s+(.+)$/);
+      let qty = 1, name = l;
+      if (m) { qty = Math.min(Number(m[1]), 100); name = m[2]; }
+      name = name
+        .replace(/\s+\*[A-Z]+\*\s*$/, '')
+        .replace(/\s+#\S.*$/, '')
+        .replace(/\s+\[[^\]]*\]\s*$/, '')
+        .replace(/\s+\([A-Za-z0-9]{2,6}\)(\s+[A-Za-z0-9★†-]+)?\s*$/, '')
+        .replace(/\s+\*[A-Z]+\*\s*$/, '')
+        .trim();
+      if (!name) continue;
+      sawCards = true;
+      for (let i = 0; i < qty; i++) (toSide ? side : main).push(name);
+    }
+    return { main, side };
+  }
+
+  const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+
+  async function fetchCards(names) {
+    const unique = [...new Set(names.map(norm))];
+    const original = {};
+    names.forEach((n) => { original[norm(n)] = original[norm(n)] || n; });
+    const found = {};
+    for (let i = 0; i < unique.length; i += 75) {
+      const chunk = unique.slice(i, i + 75);
+      deckMsg('Looking up cards on Scryfall… ' + Math.min(i + 75, unique.length) + ' of ' + unique.length);
+      const res = await fetch('https://api.scryfall.com/cards/collection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ identifiers: chunk.map((n) => ({ name: original[n] })) }),
+      });
+      if (!res.ok) throw new Error('Scryfall returned ' + res.status);
+      const data = await res.json();
+      (data.data || []).forEach((c) => {
+        const t = tplFrom(c);
+        const keys = [c.name, ...(c.card_faces || []).map((f) => f.name), c.name.split(' // ')[0]];
+        keys.forEach((k) => { if (k) found[norm(k)] = found[norm(k)] || t; });
+      });
+      if (i + 75 < unique.length) await new Promise((r) => setTimeout(r, 120));
+    }
+    return found;
+  }
+
+  async function loadDeck() {
+    const text = $('#deckText').value;
+    const list = parseList(text);
+    if (!list.main.length) return deckMsg('Paste a decklist first.', 'err');
+    store.set('deck', text);
+    $('#loadDeckBtn').disabled = true;
+    try {
+      const found = await fetchCards([...list.main, ...list.side]);
+      const missing = new Set();
+      const toTpl = (n) => {
+        const t = found[norm(n)];
+        if (t) return t;
+        missing.add(n);
+        return { name: n, type: '', img: null, big: null, text: { pt: '' } };
+      };
+      S.deck = { main: list.main.map(toTpl), side: list.side.map(toTpl) };
+      S.meReady = false;
+      let msg = 'Loaded ' + S.deck.main.length + ' cards' + (S.deck.side.length ? ' plus a ' + S.deck.side.length + '-card sideboard' : '') + '.';
+      if (missing.size) msg += ' Not found on Scryfall (shown as text cards): ' + [...missing].join(', ') + '.';
+      deckMsg(msg, missing.size ? 'err' : 'ok');
+      syncNow();
+    } catch (e) {
+      deckMsg('Couldn’t reach Scryfall (' + e.message + '). Check your connection and try again.', 'err');
+    }
+    $('#loadDeckBtn').disabled = false;
+    render();
+  }
+
+  async function searchScryfall(q, tokensOnly) {
+    const query = (tokensOnly ? 't:token ' : '') + q;
+    const url = 'https://api.scryfall.com/cards/search?q=' + encodeURIComponent(query) + '&unique=art&include_extras=true&order=name';
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (res.status === 404) return [];
+    if (!res.ok) throw new Error('Scryfall returned ' + res.status);
+    const data = await res.json();
+    return (data.data || []).slice(0, 60).map(tplFrom);
+  }
+
+  /* ---------------------------- rendering ---------------------------- */
+  const PV = new Map(); // preview registry: key -> card data
+  const bfEls = new Map();
+  let drag = null;
+
+  function render() {
+    renderPanels();
+    renderTop();
+    sizeCards();
+    measure();
+    renderStrips();
+    renderTable();
+    renderSide();
+    renderViewer();
+  }
+
+  function renderPanels() {
+    $('#lobby').hidden = S.phase !== 'lobby';
+    $('#deckPanel').hidden = S.phase !== 'deck';
+    $('#sbPanel').hidden = S.phase !== 'sideboard';
+    if (S.phase === 'deck') {
+      $('#readyBtn').disabled = !S.deck;
+      $('#readyBtn').textContent = S.meReady ? 'Waiting… (click to cancel)' : S.game ? 'Ready for game ' + (S.game + 1) : 'Ready';
+      $('#oppDeckStatus').innerHTML = oppStatusHTML();
+    }
+    if (S.phase === 'sideboard') {
+      $('#sbReadyBtn').textContent = S.meReady ? 'Waiting… (click to cancel)' : 'Ready for game ' + (S.game + 1);
+      $('#sbOppStatus').innerHTML = oppStatusHTML();
+      $('#sbScore').innerHTML = scoreHTML(true);
+      $('#resetScoreBtn').hidden = S.solo;
+    }
+  }
+  function oppStatusHTML() {
+    if (S.solo) return '<span class="dot on"></span> Solo practice';
+    if (!S.connected) return '<span class="dot ' + (S.everConnected ? 'off' : '') + '"></span> ' + (S.everConnected ? oppName() + ' is disconnected.' : 'Waiting for your opponent to join with code <b>' + esc(S.code) + '</b>…');
+    const o = S.opp || emptyOpp();
+    const st = o.ready ? 'is ready.' : o.hasDeck ? 'has loaded a deck.' : 'is loading a deck…';
+    return '<span class="dot on"></span> <b>' + esc(o.name) + '</b>&nbsp;' + st;
+  }
+  function scoreHTML(big) {
+    if (S.solo) return big ? 'Games played: <b>' + (S.score.host + S.score.guest + S.score.draw) + '</b>' : '';
+    const me = S.score[S.role] || 0, them = S.score[other(S.role)] || 0;
+    let s = 'You <b>' + me + '</b> – <b>' + them + '</b> ' + esc(oppName());
+    if (S.score.draw) s += ' (' + S.score.draw + ' draw' + (S.score.draw > 1 ? 's' : '') + ')';
+    if (big && (me >= 2 || them >= 2)) s += ' · ' + (me >= 2 ? 'You won the match!' : esc(oppName()) + ' won the match.');
+    return s;
+  }
+
+  function renderTop() {
+    let st = '';
+    if (S.solo) st = '<span class="dot on"></span> Solo practice';
+    else if (S.role === 'host') st = 'Room <span class="code" id="codeChip" title="Click to copy">' + esc(S.code) + '</span>' + (S.connected ? '<span class="dot on"></span> ' + esc(oppName()) : '<span class="dot ' + (S.everConnected ? 'off' : '') + '"></span> ' + (S.everConnected ? 'Disconnected' : 'Waiting for opponent'));
+    else if (S.role === 'guest') st = 'Room <span class="code">' + esc(S.code) + '</span>' + (S.connected ? '<span class="dot on"></span> ' + esc(oppName()) : '<span class="dot off"></span> Disconnected');
+    $('#status').innerHTML = st;
+    const sc = scoreHTML();
+    $('#scoreline').innerHTML = S.game || S.score.host || S.score.guest ? [S.phase === 'playing' ? 'Game ' + S.game : '', sc].filter(Boolean).join(' · ') : '';
+    $('#oppStrip .piles').hidden = S.solo;
+  }
+
+  function cardInner(d, mine) {
+    if (d.faceDown) return '<div class="cback"></div>' + (mine ? '<span class="fdmark">face down</span>' : '');
+    const f = curFace(d);
+    return faceHTML(f, false, d.rot);
+  }
+  function faceHTML(f, big, rot) {
+    if (f && f.img) return '<img draggable="false" class="' + (rot ? 'r180' : '') + '" src="' + esc(big ? f.big || f.img : f.img) + '" alt="' + esc(f.name) + '">';
+    return '<div class="tcard"><b>' + esc(f && f.name) + '</b><span>' + esc(f && f.type) + '</span><em>' + esc((f && f.text && f.text.pt) || '') + '</em></div>';
+  }
+  function countersHTML(c) {
+    const ks = Object.keys(c.counters || {});
+    if (!ks.length) return '';
+    return '<div class="ctrs">' + ks.map((k) => {
+      const v = c.counters[k];
+      const label = k === '+1/+1' ? '+' + v + '/+' + v : k === '-1/-1' ? '−' + v + '/−' + v : k === 'loyalty' ? '◆ ' + v : esc(k) + ' ' + v;
+      const cls = k === '+1/+1' ? 'p1' : k === '-1/-1' ? 'm1' : k === 'loyalty' ? 'loy' : '';
+      return '<span class="ctr ' + cls + '" data-ctr="' + esc(k) + '" title="Click +1, right-click −1">' + label + '</span>';
+    }).join('') + '</div>';
+  }
+  function simpleCard(d, key, mine, extraCls = '') {
+    PV.set(key, { ...d, mine });
+    return '<div class="card ' + extraCls + '" data-pv="' + esc(key) + '" data-id="' + esc(d.id || '') + '">' + cardInner(d, mine) + '</div>';
+  }
+
+  function pileHTML(list, kind, mine, side) {
+    const n = list.length;
+    let inner = '';
+    if (kind === 'lib') inner = n ? '<div class="cback"></div>' : '';
+    else if (n) {
+      const top = list[n - 1];
+      PV.set(side + kind, { ...top, mine });
+      inner = cardInner(top, mine);
+    }
+    const lbl = side === 'opp' ? { lib: 'Lib', gy: 'GY', ex: 'Exile' }[kind] : { lib: 'Library', gy: 'Graveyard', ex: 'Exile' }[kind];
+    return inner + '<span class="lbl">' + lbl + '</span><span class="count">' + n + '</span>';
+  }
+  function setPile(el, html, has, pvKey) {
+    if (el._html !== html) { el.innerHTML = html; el._html = html; }
+    el.classList.toggle('has', has);
+    if (pvKey && has) el.dataset.pv = pvKey; else delete el.dataset.pv;
+  }
+
+  function renderStrips() {
+    const lib = S.z.library.map(() => null);
+    setPile($('#myLib'), pileHTML(lib, 'lib', true, 'my'), lib.length > 0);
+    const gy = S.z.graveyard.map((i) => S.cards[i]);
+    const ex = S.z.exile.map((i) => S.cards[i]);
+    setPile($('#myGy'), pileHTML(gy, 'gy', true, 'my'), gy.length > 0, 'mygy');
+    setPile($('#myEx'), pileHTML(ex, 'ex', true, 'my'), ex.length > 0, 'myex');
+
+    const hand = $('#hand');
+    const ids = S.z.hand;
+    if (!ids.length) hand.innerHTML = inGame() ? '<span class="empty">Your hand is empty</span>' : '';
+    else {
+      const avail = hand.clientWidth - 12;
+      const overlap = ids.length * (G.cw + 6) > avail ? Math.max(14, (avail - G.cw) / (ids.length - 1)) - G.cw : 6;
+      hand.innerHTML = ids.map((id, k) => {
+        const c = S.cards[id];
+        PV.set('h:' + id, { ...c, mine: true });
+        return '<div class="card hcard" data-pv="h:' + esc(id) + '" data-id="' + esc(id) + '" style="margin-left:' + (k ? overlap : 0) + 'px">' + cardInner(c, true) + '</div>';
+      }).join('');
+      if (drag && drag.src === 'hand') { const el = hand.querySelector('[data-id="' + CSS.escape(drag.id) + '"]'); if (el) el.classList.add('lifting'); }
+    }
+    $('#myWho').innerHTML = '<b>' + esc(S.myName || 'You') + '</b><br>' + S.z.hand.length + ' in hand' + (S.z.sideboard.length ? ' · ' + S.z.sideboard.length + ' SB' : '');
+
+    const o = S.opp;
+    if (S.solo) {
+      $('#oppHand').innerHTML = '<span class="n">Solo practice: no opponent at this table.</span>';
+      $('#oppWho').innerHTML = '';
+      ['#oppLib', '#oppGy', '#oppEx'].forEach((s) => setPile($(s), '', false));
+      $('#oppTag').textContent = '';
+      return;
+    }
+    if (!o) {
+      $('#oppHand').innerHTML = '<span class="n">Waiting for an opponent…</span>';
+      $('#oppWho').innerHTML = '';
+      ['#oppLib', '#oppGy', '#oppEx'].forEach((s) => setPile($(s), '', false));
+      $('#oppTag').textContent = '';
+      return;
+    }
+    setPile($('#oppLib'), pileHTML(Array(o.library).fill(null), 'lib', false, 'opp'), o.library > 0);
+    setPile($('#oppGy'), pileHTML(o.gy, 'gy', false, 'opp'), o.gy.length > 0, 'oppgy');
+    setPile($('#oppEx'), pileHTML(o.ex, 'ex', false, 'opp'), o.ex.length > 0, 'oppex');
+    const nBacks = Math.min(o.hand, 12);
+    $('#oppHand').innerHTML = '<div class="cback"></div>'.repeat(nBacks) + '<span class="n">' + o.hand + ' card' + (o.hand === 1 ? '' : 's') + ' in hand</span>';
+    $('#oppWho').innerHTML = '<b>' + esc(o.name) + '</b><br>' + (S.connected ? (o.side ? o.side + ' SB' : '') : 'disconnected');
+    $('#oppTag').textContent = o.name + '’s battlefield';
+  }
+
+  function renderTable() {
+    const table = $('#table');
+    const mine = inGame() ? S.z.battlefield.map((i) => S.cards[i]).filter(Boolean) : [];
+    const theirs = !S.solo && S.opp && S.opp.inGame ? S.opp.bf : [];
+    const pos = new Map();
+    mine.forEach((c) => pos.set(c.id, { ...myPos(c), z: c.z }));
+    theirs.forEach((c) => pos.set(c.id, { ...oppPos(c), z: c.z }));
+    const all = [...mine.map((c) => ({ c, mine: true })), ...theirs.map((c) => ({ c, mine: false }))];
+    const subCount = {};
+    all.forEach(({ c }) => {
+      if (!c.attachedTo || !pos.has(c.attachedTo) || c.attachedTo === c.id) return;
+      const h = pos.get(c.attachedTo);
+      const k = (subCount[c.attachedTo] = (subCount[c.attachedTo] || 0) + 1);
+      const dir = h.top >= G.half ? -1 : 1;
+      pos.set(c.id, { left: h.left, top: h.top + dir * k * Math.round(G.ch * 0.17), z: h.z, sub: k });
+    });
+    const seen = new Set();
+    for (const { c, mine: m } of all) {
+      const key = (m ? 'm:' : 'o:') + c.id;
+      seen.add(key);
+      let el = bfEls.get(key);
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'card bfc' + (m ? ' mine' : ' opp');
+        el.dataset.id = c.id;
+        el.dataset.pv = key;
+        el.dataset.side = m ? 'me' : 'opp';
+        table.appendChild(el);
+        bfEls.set(key, el);
+      }
+      PV.set(key, { ...c, mine: m });
+      const sig = JSON.stringify([c.faceDown, c.transformed, c.rot, c.img, c.counters, c.name]);
+      if (el._sig !== sig) { el.innerHTML = cardInner(c, m) + countersHTML(c); el._sig = sig; }
+      el.classList.toggle('tapped', !!c.tapped);
+      if (drag && drag.key === key && drag.moved) continue;
+      const p = pos.get(c.id);
+      el.style.left = Math.round(p.left) + 'px';
+      el.style.top = Math.round(p.top) + 'px';
+      el.style.zIndex = p.sub ? p.z * 10 + 10 - p.sub : p.z * 10 + 10;
+    }
+    for (const [k, el] of bfEls) if (!seen.has(k)) { el.remove(); bfEls.delete(k); }
+  }
+
+  function renderSide() {
+    const lifeBox = (el, name, life, mine) => {
+      el.innerHTML = '<span class="nm">' + esc(name) + '</span><button data-life="' + (mine ? 'me' : 'opp') + '" data-d="-1">−</button><span class="life" data-setlife="' + (mine ? 'me' : '') + '" title="' + (mine ? 'Click to set' : '') + '">' + life + '</span><button data-life="' + (mine ? 'me' : 'opp') + '" data-d="1">+</button>';
+    };
+    const ol = $('#oppLife');
+    if (S.solo || !S.opp) ol.hidden = true;
+    else { ol.hidden = false; lifeBox(ol, S.opp.name, S.opp.life, false); }
+    lifeBox($('#myLife'), S.myName || 'You', S.life, true);
+    $$('#actions button').forEach((b) => { b.disabled = !inGame() && b.dataset.act !== 'dice'; });
+  }
+
+  function showPreview(d) {
+    if (!d) return;
+    const p = $('#preview');
+    let html;
+    if (d.faceDown && !d.mine) html = '<div class="pv-main"><div class="cback"></div></div><div class="pv-cap">Face-down card</div>';
+    else {
+      const f = curFace(d);
+      const o = otherFace(d);
+      html = '<div class="pv-main">' + faceHTML(f, true) + '</div>' + (d.faceDown ? '<div class="pv-cap">Face down: only you can see this</div>' : '') + (o ? '<div class="pv-other">' + faceHTML(o, true) + '</div>' : '');
+    }
+    if (p._html !== html) { p.innerHTML = html; p._html = html; }
+  }
+
+  /* ---------------------------- menus ---------------------------- */
+  let menuEl = null;
+  function closeMenu() { if (menuEl) { menuEl.remove(); menuEl = null; } }
+  function buildMenu(items) {
+    const ul = document.createElement('ul');
+    ul.className = 'menu';
+    items.filter(Boolean).forEach((it) => {
+      if (it.sep) { ul.appendChild(document.createElement('hr')); return; }
+      const li = document.createElement('li');
+      if (it.head) { li.className = 'head'; li.textContent = it.head; ul.appendChild(li); return; }
+      li.innerHTML = '<span>' + esc(it.label) + '</span>' + (it.key ? '<span class="k">' + esc(it.key) + '</span>' : '');
+      if (it.disabled) li.classList.add('dis');
+      if (it.sub) {
+        li.classList.add('sub');
+        const sm = buildMenu(it.sub);
+        li.appendChild(sm);
+        li.addEventListener('mouseenter', () => {
+          sm.classList.remove('flip');
+          const r = sm.getBoundingClientRect();
+          if (r.right > window.innerWidth - 4) sm.classList.add('flip');
+          const r2 = sm.getBoundingClientRect();
+          if (r2.bottom > window.innerHeight - 4) sm.style.top = -(r2.bottom - window.innerHeight + 10) + 'px';
+        });
+      } else {
+        li.addEventListener('click', (e) => { e.stopPropagation(); closeMenu(); it.act && it.act(); });
+      }
+      ul.appendChild(li);
+    });
+    return ul;
+  }
+  function openMenu(x, y, items) {
+    closeMenu();
+    menuEl = buildMenu(items);
+    document.body.appendChild(menuEl);
+    const r = menuEl.getBoundingClientRect();
+    menuEl.style.left = clamp(x, 4, window.innerWidth - r.width - 4) + 'px';
+    menuEl.style.top = clamp(y, 4, window.innerHeight - r.height - 4) + 'px';
+  }
+
+  const libMoves = (id) => [
+    { label: 'Top of library', key: 'O', act: () => moveCard(id, 'library', { pos: 'top' }) },
+    { label: 'Bottom of library', key: 'B', act: () => moveCard(id, 'library', { pos: 'bottom' }) },
+    { label: 'Shuffle into library', act: () => moveCard(id, 'library', { pos: 'shuffle' }) },
+  ];
+
+  function bfMenu(c) {
+    const id = c.id;
+    return [
+      { head: visibleName(c) + (c.owner !== S.role ? ' (owned by ' + oppName() + ')' : '') },
+      { label: c.tapped ? 'Untap' : 'Tap', key: 'T', act: () => toggleTap(id) },
+      c.back && !c.faceDown && { label: c.transformed ? 'Transform to front' : 'Transform', key: 'F', act: () => transform(id) },
+      { label: c.faceDown ? 'Turn face up' : 'Turn face down', key: 'Z', act: () => toggleFaceDown(id) },
+      { label: c.rot ? 'Turn right side up' : 'Rotate 180° (flip card)', act: () => rotate180(id) },
+      { sep: true },
+      {
+        label: 'Counters', sub: [
+          { label: 'Add +1/+1', key: '+', act: () => addCounter(id, '+1/+1', 1) },
+          { label: 'Remove +1/+1', key: '−', act: () => addCounter(id, '+1/+1', -1) },
+          { label: 'Add −1/−1', act: () => addCounter(id, '-1/-1', 1) },
+          { label: 'Remove −1/−1', act: () => addCounter(id, '-1/-1', -1) },
+          { label: 'Add loyalty', act: () => addCounter(id, 'loyalty', 1) },
+          { label: 'Remove loyalty', act: () => addCounter(id, 'loyalty', -1) },
+          { sep: true },
+          { label: 'Other counters…', act: () => openCounters(id) },
+          { label: 'Clear all', act: () => { c.counters = {}; changed(); } },
+        ],
+      },
+      c.attachedTo ? { label: 'Detach', act: () => detach(id) } : { label: 'Attach to…', key: 'A', act: () => startAttach(id) },
+      { label: 'Copy (create token)', key: 'C', act: () => copyCard(id) },
+      !S.solo && S.connected && { label: 'Give control to ' + oppName(), act: () => giveControl(id) },
+      { sep: true },
+      { label: 'To hand', key: 'H', act: () => moveCard(id, 'hand') },
+      { label: 'To graveyard', key: 'G', act: () => moveCard(id, 'graveyard') },
+      { label: 'To exile', key: 'E', act: () => moveCard(id, 'exile') },
+      { label: 'Library', sub: libMoves(id) },
+    ];
+  }
+  function handMenu(c) {
+    const id = c.id;
+    return [
+      { head: c.name },
+      { label: 'Play', key: 'P', act: () => playFromHand(id) },
+      { label: 'Play tapped', act: () => playFromHand(id, { tapped: true }) },
+      { label: 'Play face down', act: () => playFromHand(id, { faceDown: true }) },
+      { sep: true },
+      { label: 'Discard', key: 'G', act: () => moveCard(id, 'graveyard') },
+      { label: 'Exile', key: 'E', act: () => moveCard(id, 'exile') },
+      { label: 'Exile face down', act: () => moveCard(id, 'exile', { faceDown: true }) },
+      { label: 'Library', sub: libMoves(id) },
+      { sep: true },
+      !S.solo && { label: 'Reveal to ' + oppName(), act: () => reveal(c.name, [id]) },
+    ];
+  }
+  function handAreaMenu() {
+    return [
+      { head: 'Hand (' + S.z.hand.length + ')' },
+      !S.solo && { label: 'Reveal hand to ' + oppName(), disabled: !S.z.hand.length, act: () => reveal('their hand', S.z.hand.slice()) },
+      { label: 'Discard at random', disabled: !S.z.hand.length, act: randomDiscard },
+      { label: 'Shuffle hand into library', disabled: !S.z.hand.length, act: shuffleHandIn },
+      { sep: true },
+      { label: 'Take a mulligan (new 7)', act: mulliganAgain },
+    ];
+  }
+  function libMenu() {
+    const n = S.z.library.length;
+    const ask = (title, fn, def = 1) => askNumber(title, def, (v) => fn(clamp(v, 1, 99)));
+    return [
+      { head: 'Library (' + n + ')' },
+      { label: 'Draw', key: 'D', act: () => drawN(1) },
+      { label: 'Draw X…', key: '⇧D', act: () => ask('Draw how many?', (v) => drawN(v)) },
+      { sep: true },
+      { label: 'Scry X…', act: () => ask('Scry how many?', (v) => openPeek('scry', v)) },
+      { label: 'Surveil X…', act: () => ask('Surveil how many?', (v) => openPeek('surveil', v)) },
+      { label: 'Look at top X…', act: () => ask('Look at how many?', (v) => openPeek('look', v), 3) },
+      { label: 'Mill X…', act: () => ask('Mill how many?', millN) },
+      { sep: true },
+      !S.solo && { label: 'Reveal top card', disabled: !n, act: () => { reveal('the top card of their library', [S.z.library[0]]); showReveal('Top card of your library', [revealCard(S.cards[S.z.library[0]])], true); } },
+      { label: 'Play top card', disabled: !n, act: () => moveCard(S.z.library[0], 'battlefield') },
+      { label: 'Play top card face down', disabled: !n, act: () => moveCard(S.z.library[0], 'battlefield', { faceDown: true }) },
+      { label: 'Exile top card', disabled: !n, act: () => moveCard(S.z.library[0], 'exile') },
+      { label: 'Exile top card face down', disabled: !n, act: () => moveCard(S.z.library[0], 'exile', { faceDown: true }) },
+      { sep: true },
+      { label: 'Search library…', act: () => openViewer('library', true) },
+      { label: 'Shuffle', key: 'S', act: shuffleLibrary },
+    ];
+  }
+  function pileMenu(zone) {
+    const n = S.z[zone].length;
+    const name = zone === 'graveyard' ? 'Graveyard' : 'Exile';
+    return [
+      { head: name + ' (' + n + ')' },
+      { label: 'View', act: () => openViewer(zone, true) },
+      { label: 'Shuffle ' + name.toLowerCase() + ' into library', disabled: !n, act: () => { S.z[zone].splice(0).forEach((id) => S.z.library.push(id)); shuffle(S.z.library); changed(); } },
+      zone === 'graveyard' && { label: 'Exile graveyard', disabled: !n, act: () => { S.z.graveyard.splice(0).forEach((id) => { S.cards[id].faceDown = false; S.z.exile.push(id); }); changed(); } },
+    ];
+  }
+  function viewerCardMenu(id, zone) {
+    const c = S.cards[id];
+    const dests = [
+      ['hand', 'To hand'], ['battlefield', 'To battlefield'], ['graveyard', 'To graveyard'], ['exile', 'To exile'],
+    ].filter(([z]) => z !== zone);
+    return [
+      { head: c.name },
+      ...dests.map(([z, l]) => ({ label: l, act: () => moveCard(id, z) })),
+      zone !== 'battlefield' && { label: 'To battlefield face down', act: () => moveCard(id, 'battlefield', { faceDown: true }) },
+      { label: 'Library', sub: libMoves(id) },
+      !S.solo && { label: 'Reveal to ' + oppName(), act: () => reveal(c.name, [id]) },
+    ];
+  }
+  function tableMenu() {
+    return [
+      { label: 'Untap all', key: 'U', act: untapAll },
+      { label: 'Create token…', key: 'N', act: openTokens },
+      { label: 'Tidy battlefield', key: 'Y', act: tidy },
+      { sep: true },
+      { label: 'Dice & coin', sub: diceItems() },
+    ];
+  }
+  const diceItems = () => [
+    { label: 'Flip a coin', act: flipCoin },
+    ...[6, 20, 4, 8, 10, 12].map((n) => ({ label: 'Roll d' + n, act: () => roll(n) })),
+    { label: 'Roll dX…', act: () => askNumber('How many sides?', 100, (v) => roll(clamp(v, 2, 1000))) },
+  ];
+
+  /* ---------------------------- modals ---------------------------- */
+  function openModal({ title, body = '', buttons = [], wide = false, onClose, closable = true }) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = '<div class="modal' + (wide ? ' wide' : '') + '"><div class="modal-head"><h3>' + esc(title) + '</h3></div><div class="modal-body"></div><div class="modal-foot"></div></div>';
+    const bodyEl = $('.modal-body', back);
+    if (typeof body === 'string') bodyEl.innerHTML = body; else bodyEl.appendChild(body);
+    const foot = $('.modal-foot', back);
+    const api = {
+      el: back, body: bodyEl,
+      close() { back.remove(); if (onClose) onClose(); },
+    };
+    back._api = api;
+    back._closable = closable;
+    buttons.forEach((b) => {
+      const btn = document.createElement('button');
+      btn.textContent = b.label;
+      if (b.primary) btn.className = 'primary';
+      if (b.id) btn.id = b.id;
+      btn.addEventListener('click', () => { if (b.act && b.act(api) === false) return; if (b.keep) return; api.close(); });
+      foot.appendChild(btn);
+    });
+    if (!buttons.length) foot.remove();
+    back.addEventListener('pointerdown', (e) => { if (e.target === back && closable) api.close(); });
+    $('#modals').appendChild(back);
+    const f = $('input,select,textarea', bodyEl);
+    if (f) setTimeout(() => f.focus(), 0);
+    return api;
+  }
+  function topModal() { const all = $$('#modals .modal-back'); return all.length ? all[all.length - 1] : null; }
+  function closeAllModals() { $$('#modals .modal-back').forEach((m) => m.remove()); S.viewer = null; }
+
+  function askNumber(title, def, fn) {
+    const m = openModal({
+      title,
+      body: '<input type="number" min="0" value="' + def + '" style="width:120px">',
+      buttons: [{ label: 'Cancel' }, { label: 'OK', primary: true, act: (api) => { const v = parseInt($('input', api.body).value, 10); if (Number.isFinite(v)) fn(v); } }],
+    });
+    const inp = $('input', m.body);
+    inp.select();
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const v = parseInt(inp.value, 10); m.close(); if (Number.isFinite(v)) fn(v); } });
+  }
+
+  function showReveal(title, cards, self) {
+    const html = '<div class="grid big">' + cards.map((c, i) => simpleCard({ ...c, faceDown: false }, 'rv:' + Date.now() + ':' + i, true)).join('') + '</div>';
+    openModal({ title: self ? title : title, body: html, buttons: [{ label: 'OK', primary: true }], wide: cards.length > 4 });
+  }
+
+  function openMulligan() {
+    const ids = S.z.hand.slice();
+    const html = '<p class="msg">' + (S.mull ? 'Mulligans taken: ' + S.mull + '. If you keep, you’ll put ' + S.mull + ' card' + (S.mull > 1 ? 's' : '') + ' on the bottom.' : 'London mulligan: you always draw 7, then bottom one card per mulligan.') + '</p><div class="grid big">' + ids.map((id) => simpleCard(S.cards[id], 'mu:' + id, true)).join('') + '</div>';
+    openModal({
+      title: 'Opening hand' + (S.mull ? ' (mulligan ' + S.mull + ')' : ''),
+      body: html,
+      wide: true,
+      closable: false,
+      buttons: [
+        { label: 'Mulligan', act: () => { setTimeout(mulliganAgain, 0); } },
+        { label: 'Keep', primary: true, act: () => { if (S.mull > 0) setTimeout(openBottoming, 0); } },
+      ],
+    });
+  }
+  function openBottoming() {
+    const need = Math.min(S.mull, S.z.hand.length);
+    const chosen = [];
+    const html = '<p class="msg">Choose ' + need + ' card' + (need > 1 ? 's' : '') + ' to put on the bottom of your library, in order.</p><div class="grid big">' + S.z.hand.map((id) => simpleCard(S.cards[id], 'bt:' + id, true)).join('') + '</div>';
+    const m = openModal({
+      title: 'Bottom ' + need + ' card' + (need > 1 ? 's' : ''),
+      body: html, wide: true, closable: false,
+      buttons: [{ label: 'Bottom 0 of ' + need, primary: true, id: 'bottomBtn', act: () => {
+        if (chosen.length !== need) return false;
+        chosen.forEach((id) => moveCard(id, 'library', { pos: 'bottom', quiet: true }));
+        changed();
+      } }],
+    });
+    const btn = $('#bottomBtn', m.el);
+    btn.disabled = true;
+    $$('.card', m.body).forEach((el) => el.addEventListener('click', () => {
+      const id = el.dataset.id;
+      const k = chosen.indexOf(id);
+      if (k >= 0) chosen.splice(k, 1); else if (chosen.length < need) chosen.push(id);
+      $$('.card', m.body).forEach((e2) => e2.classList.toggle('sel', chosen.includes(e2.dataset.id)));
+      btn.textContent = 'Bottom ' + chosen.length + ' of ' + need;
+      btn.disabled = chosen.length !== need;
+    }));
+  }
+
+  function openPeek(mode, n) {
+    n = Math.min(n, S.z.library.length);
+    if (!n) return toast('Your library is empty.');
+    const rows = S.z.library.slice(0, n).map((id) => ({ id, dest: 'top' }));
+    const opts = {
+      scry: [['top', 'Top'], ['bottom', 'Bottom']],
+      surveil: [['top', 'Top'], ['graveyard', 'Graveyard']],
+      look: [['top', 'Top'], ['bottom', 'Bottom'], ['hand', 'Hand'], ['battlefield', 'Battlefield'], ['graveyard', 'Graveyard'], ['exile', 'Exile']],
+    }[mode];
+    const title = { scry: 'Scry ' + n, surveil: 'Surveil ' + n, look: 'Top ' + n + ' of your library' }[mode];
+    const wrap = document.createElement('div');
+    const m = openModal({
+      title, body: wrap, wide: true, closable: false,
+      buttons: [{ label: 'Done', primary: true, act: () => {
+        S.z.library.splice(0, n);
+        const tops = rows.filter((r) => r.dest === 'top').map((r) => r.id);
+        const bottoms = rows.filter((r) => r.dest === 'bottom').map((r) => r.id);
+        S.z.library.unshift(...tops);
+        S.z.library.push(...bottoms);
+        rows.filter((r) => !['top', 'bottom'].includes(r.dest)).forEach((r) => moveCard(r.id, r.dest, { quiet: true }));
+        changed();
+      } }],
+    });
+    const draw = () => {
+      wrap.innerHTML = '<p class="msg">Leftmost card is the top of your library. Use the arrows to reorder. Click a card to cycle its destination.</p><div class="grid big">' + rows.map((r, i) =>
+        '<div class="item">' + simpleCard(S.cards[r.id], 'pk:' + r.id, true) +
+        '<div class="arrows"><button data-mv="' + i + '" data-d="-1"' + (i ? '' : ' disabled') + '>◀</button><button data-mv="' + i + '" data-d="1"' + (i < rows.length - 1 ? '' : ' disabled') + '>▶</button></div>' +
+        '<select data-i="' + i + '">' + opts.map(([v, l]) => '<option value="' + v + '"' + (r.dest === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></div>'
+      ).join('') + '</div>';
+      $$('[data-mv]', wrap).forEach((b) => b.addEventListener('click', () => {
+        const i = Number(b.dataset.mv), j = i + Number(b.dataset.d);
+        [rows[i], rows[j]] = [rows[j], rows[i]];
+        draw();
+      }));
+      $$('select', wrap).forEach((s) => s.addEventListener('change', () => { rows[Number(s.dataset.i)].dest = s.value; }));
+      $$('.card', wrap).forEach((el, i) => el.addEventListener('click', () => {
+        const r = rows[i];
+        const k = opts.findIndex(([v]) => v === r.dest);
+        r.dest = opts[(k + 1) % opts.length][0];
+        draw();
+      }));
+    };
+    draw();
+    return m;
+  }
+
+  /** Zone viewer: stays live while open. */
+  function openViewer(zone, mine) {
+    const titles = { graveyard: 'Graveyard', exile: 'Exile', library: 'Library (top first)', sideboard: 'Sideboard' };
+    const who = mine ? 'Your ' : oppName() + '’s ';
+    const wrap = document.createElement('div');
+    const buttons = zone === 'library'
+      ? [{ label: 'Close' }, { label: 'Shuffle & close', primary: true, act: () => shuffleLibrary() }]
+      : [{ label: 'Close', primary: true }];
+    const m = openModal({ title: who + titles[zone].toLowerCase(), body: wrap, wide: true, buttons, onClose: () => { if (S.viewer && S.viewer.m === m) S.viewer = null; } });
+    S.viewer = { zone, mine, m, wrap };
+    renderViewer();
+    if (zone === 'library' && !S.solo) send({ t: 'toast', text: S.myName + ' is searching their library.' });
+  }
+  function renderViewer() {
+    const v = S.viewer;
+    if (!v) return;
+    let cards;
+    if (v.mine) {
+      cards = S.z[v.zone].map((i) => S.cards[i]).filter(Boolean);
+      if (v.zone === 'graveyard' || v.zone === 'exile') cards = cards.slice().reverse();
+    } else {
+      const o = S.opp || emptyOpp();
+      cards = (v.zone === 'graveyard' ? o.gy : o.ex).slice().reverse();
+    }
+    const html = cards.length
+      ? '<p class="msg">' + (v.mine ? 'Click a card for options.' : 'Hover to preview.') + (v.zone !== 'library' && v.zone !== 'sideboard' ? ' Most recent first.' : '') + '</p><div class="grid mid">' + cards.map((c) => simpleCard(c, 'zv:' + c.id, v.mine, v.mine ? 'zv' : 'opp')).join('') + '</div>'
+      : '<p class="grid empty">Empty.</p>';
+    if (v.wrap._html !== html) { v.wrap.innerHTML = html; v.wrap._html = html; }
+  }
+
+  function openCounters(id) {
+    const c = S.cards[id];
+    const wrap = document.createElement('div');
+    const draw = () => {
+      const ks = Object.keys(c.counters);
+      wrap.innerHTML = (ks.length ? ks.map((k) => '<div class="ctr-row"><span class="nm">' + esc(k) + '</span><button data-k="' + esc(k) + '" data-d="-1">−</button><span class="v">' + c.counters[k] + '</span><button data-k="' + esc(k) + '" data-d="1">+</button></div>').join('') : '<p class="msg">No counters yet.</p>') +
+        '<div class="row"><input id="newCtr" placeholder="Counter name (e.g. charge, time, oil)" style="flex:1"><button id="addCtr">Add</button></div>';
+      $$('[data-k]', wrap).forEach((b) => b.addEventListener('click', () => { addCounter(id, b.dataset.k, Number(b.dataset.d)); draw(); }));
+      const add = () => { const n = $('#newCtr', wrap).value.trim().slice(0, 20); if (n) { addCounter(id, n, 1); draw(); } };
+      $('#addCtr', wrap).addEventListener('click', add);
+      $('#newCtr', wrap).addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
+    };
+    draw();
+    openModal({ title: 'Counters on ' + visibleName(c), body: wrap, buttons: [{ label: 'Done', primary: true }] });
+  }
+
+  function openTokens() {
+    if (!inGame()) return;
+    const wrap = document.createElement('div');
+    wrap.innerHTML =
+      '<div class="row"><input id="tokQ" placeholder="Search Scryfall, e.g. goblin, treasure, 1/1 spirit" style="flex:1"><label class="row" style="gap:4px"><input type="checkbox" id="tokOnly" checked> Tokens only</label><button id="tokGo">Search</button></div>' +
+      '<div class="row"><span class="msg">Create</span><input type="number" id="tokN" value="1" min="1" max="30" style="width:64px"><span class="msg">copies · click a result to create it</span></div>' +
+      '<div class="grid tok-results" id="tokRes"></div>' +
+      '<hr style="border:0;border-top:1px solid var(--line);width:100%">' +
+      '<div class="msg">Or make a simple text token:</div>' +
+      '<div class="custom-tok"><input id="ctName" placeholder="Name (e.g. Zombie)"><input id="ctPT" placeholder="P/T"><input id="ctType" placeholder="Type" value="Token Creature"><button id="ctGo">Create</button></div>';
+    const m = openModal({ title: 'Create token', body: wrap, wide: true, buttons: [{ label: 'Close' }] });
+    let results = [];
+    const create = (tpl) => {
+      const n = clamp(parseInt($('#tokN', wrap).value, 10) || 1, 1, 30);
+      for (let i = 0; i < n; i++) { const t = makeCard(tpl, { token: true }); putInZone(t, 'battlefield'); }
+      changed();
+      toast('Created ' + n + ' × ' + tpl.name + '.');
+    };
+    const search = async () => {
+      const q = $('#tokQ', wrap).value.trim();
+      if (!q) return;
+      const res = $('#tokRes', wrap);
+      res.innerHTML = '<span class="msg">Searching…</span>';
+      try {
+        results = await searchScryfall(q, $('#tokOnly', wrap).checked);
+        res.innerHTML = results.length ? results.map((t, i) => simpleCard(t, 'tk:' + i, true, 'tok')).join('') : '<span class="msg">No results.</span>';
+        $$('.card', res).forEach((el, i) => el.addEventListener('click', () => create(results[i])));
+      } catch (e) {
+        res.innerHTML = '<span class="msg err">Search failed: ' + esc(e.message) + '</span>';
+      }
+    };
+    $('#tokGo', wrap).addEventListener('click', search);
+    $('#tokQ', wrap).addEventListener('keydown', (e) => { if (e.key === 'Enter') search(); });
+    $('#ctGo', wrap).addEventListener('click', () => {
+      const name = $('#ctName', wrap).value.trim() || 'Token';
+      create({ name, type: $('#ctType', wrap).value.trim(), text: { pt: $('#ctPT', wrap).value.trim() } });
+    });
+    return m;
+  }
+
+  function openEndGame() {
+    const opp = S.solo ? 'Loss' : oppName() + ' won';
+    openModal({
+      title: 'End game ' + S.game + '?',
+      body: '<p class="msg">Record the result. Then you’ll both sideboard and ready up for the next game.</p>',
+      buttons: [
+        { label: 'Cancel' },
+        { label: 'Draw', act: () => endWith('draw') },
+        { label: opp, act: () => endWith(other(S.role)) },
+        { label: S.solo ? 'Win' : 'I won', primary: true, act: () => endWith(S.role) },
+      ],
+    });
+  }
+  function endWith(w) { send({ t: 'result', winner: w }); setTimeout(() => applyResult(w), 0); }
+
+  function openHelp() {
+    const keys = [
+      ['D', 'Draw a card'], ['⇧ D', 'Draw X'], ['U', 'Untap all'], ['S', 'Shuffle library'],
+      ['N', 'Create token'], ['R', 'Dice & coin'], ['Y', 'Tidy battlefield'], ['?', 'This help'],
+      ['T', 'Tap / untap hovered'], ['P', 'Play hovered card from hand'], ['F', 'Transform hovered'], ['Z', 'Face down / up'],
+      ['C', 'Copy hovered (token)'], ['A', 'Attach hovered to…'], ['+ / −', '+1/+1 counter on hovered'], ['H', 'Hovered → hand'],
+      ['G', 'Hovered → graveyard'], ['E', 'Hovered → exile'], ['O', 'Hovered → top of library'], ['B', 'Hovered → bottom of library'],
+      ['Esc', 'Close menus & dialogs'],
+    ];
+    openModal({
+      title: 'Shortcuts',
+      wide: true,
+      body: '<div class="help-grid">' + keys.map(([k, d]) => '<kbd>' + k + '</kbd><span>' + d + '</span>').join('') + '</div>' +
+        '<ul class="help-mouse"><li>Click your library to draw; right-click it for scry, surveil, mill, search and more.</li><li>Drag cards between your hand, battlefield, library, graveyard and exile.</li><li>Double-click a permanent to tap it; double-click a card in hand to play it.</li><li>Right-click anything for its full menu. Click a counter badge for +1, right-click for −1.</li><li>Right-click an opponent’s permanent to take control of it.</li></ul>',
+      buttons: [{ label: 'Close', primary: true }],
+    });
+  }
+
+  /* ---------------------------- sideboarding ---------------------------- */
+  function renderSideboard() {
+    if (!S.deck) return;
+    const group = (list) => {
+      const m = new Map();
+      list.forEach((t) => { const k = t.name; if (!m.has(k)) m.set(k, { t, n: 0 }); m.get(k).n++; });
+      return [...m.values()].sort((a, b) => a.t.name.localeCompare(b.t.name));
+    };
+    const col = (list, title, from) => '<h4>' + title + ' <span>' + list.length + '</span></h4>' + (list.length ? group(list).map((g) => {
+      PV.set('sb:' + from + ':' + g.t.name, { ...g.t, mine: true });
+      return '<div class="sb-row" data-from="' + from + '" data-name="' + esc(g.t.name) + '" data-pv="sb:' + from + ':' + esc(g.t.name) + '"><span class="q">' + g.n + '×</span><span>' + esc(g.t.name) + '</span><span class="ty">' + esc((g.t.type || '').split(' — ')[0]) + '</span></div>';
+    }).join('') : '<p class="msg" style="padding:4px 6px">Empty</p>');
+    $('#sbMain').innerHTML = col(S.deck.main, 'Deck', 'main');
+    $('#sbSide').innerHTML = col(S.deck.side, 'Sideboard', 'side');
+    $('#sbTitle').textContent = 'Sideboarding for game ' + (S.game + 1);
+  }
+  function swapSb(from, name) {
+    const src = S.deck[from], dst = S.deck[from === 'main' ? 'side' : 'main'];
+    const k = src.findIndex((t) => t.name === name);
+    if (k < 0) return;
+    dst.push(src.splice(k, 1)[0]);
+    if (S.meReady) setReady(false);
+    renderSideboard();
+    render();
+  }
+
+  /* ---------------------------- toasts & banner ---------------------------- */
+  function toast(text, ms = 3500, big = false) {
+    if (!text) return;
+    const t = document.createElement('div');
+    t.className = 'toast' + (big ? ' big' : '');
+    t.textContent = text;
+    $('#toasts').appendChild(t);
+    setTimeout(() => t.remove(), ms);
+  }
+  function banner(text) { const b = $('#banner'); b.hidden = !text; b.textContent = text || ''; }
+  function lobbyMsg(t, err) { const m = $('#lobbyMsg'); m.textContent = t; m.className = 'msg' + (err ? ' err' : ''); }
+  function deckMsg(t, cls) { const m = $('#deckMsg'); m.textContent = t; m.className = 'msg' + (cls ? ' ' + cls : ''); }
+
+  /* ---------------------------- input: pointer ---------------------------- */
+  function pvData(el) { return el && el.dataset.pv ? PV.get(el.dataset.pv) : null; }
+
+  document.addEventListener('pointerover', (e) => {
+    const el = e.target.closest('[data-pv]');
+    if (!el) return;
+    const d = pvData(el);
+    if (d) showPreview(d);
+    S.hover = d && d.mine && el.dataset.id && S.cards[el.dataset.id] ? el.dataset.id : null;
+  });
+  document.addEventListener('pointerout', (e) => {
+    const el = e.target.closest('[data-pv]');
+    if (el && !el.contains(e.relatedTarget)) S.hover = null;
+  });
+
+  function dropTarget(x, y) {
+    const inR = (sel) => { const r = $(sel).getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
+    if (inR('#myLib')) return 'library';
+    if (inR('#myGy')) return 'graveyard';
+    if (inR('#myEx')) return 'exile';
+    if (inR('#hand')) return 'hand';
+    if (inR('#myHalf')) return 'battlefield';
+    return null;
+  }
+  function hot(target) {
+    const map = { library: '#myLib', graveyard: '#myGy', exile: '#myEx', hand: '#hand', battlefield: '#myHalf' };
+    Object.entries(map).forEach(([k, s]) => $(s).classList.toggle('drop-hot', k === target));
+  }
+
+  document.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    if (menuEl && !menuEl.contains(e.target)) closeMenu();
+    if (!inGame() || e.target.closest('.modal-back, .menu')) return;
+
+    if (S.attaching) {
+      const tgt = e.target.closest('.card.bfc');
+      if (tgt) { e.preventDefault(); finishAttach(tgt.dataset.id); }
+      else cancelAttach();
+      return;
+    }
+    const ctr = e.target.closest('.card.mine .ctr');
+    if (ctr) { e.preventDefault(); addCounter(ctr.closest('.card').dataset.id, ctr.dataset.ctr, 1); return; }
+
+    let src = null, id = null, el = null;
+    const bf = e.target.closest('.card.bfc.mine');
+    const hc = e.target.closest('#hand .card');
+    const pile = e.target.closest('#myLib, #myGy, #myEx');
+    if (bf) { src = 'battlefield'; id = bf.dataset.id; el = bf; }
+    else if (hc) { src = 'hand'; id = hc.dataset.id; el = hc; }
+    else if (pile) {
+      const zone = { myLib: 'library', myGy: 'graveyard', myEx: 'exile' }[pile.id];
+      const list = S.z[zone];
+      src = zone;
+      el = pile;
+      id = list.length ? (zone === 'library' ? list[0] : list[list.length - 1]) : null;
+    } else return;
+    e.preventDefault();
+    const r = el.getBoundingClientRect();
+    drag = { src, id, el, key: src === 'battlefield' ? 'm:' + id : null, sx: e.clientX, sy: e.clientY, ox: e.clientX - r.left, oy: e.clientY - r.top, moved: false, ghost: null };
+    if (src !== 'battlefield') { drag.ox = G.cw / 2; drag.oy = G.ch / 2; }
+  });
+
+  document.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    if (!drag.moved) {
+      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 5 || !drag.id) return;
+      drag.moved = true;
+      closeMenu();
+      if (drag.src === 'battlefield') {
+        drag.el.classList.add('dragging');
+        drag.el.style.zIndex = 5000;
+        const c = S.cards[drag.id];
+        if (c.attachedTo) { c.attachedTo = null; }
+      } else {
+        const c = S.cards[drag.id];
+        const g = document.createElement('div');
+        g.className = 'card ghost';
+        g.innerHTML = cardInner(drag.src === 'library' ? { ...c, faceDown: true } : c, true);
+        document.body.appendChild(g);
+        drag.ghost = g;
+        if (drag.src === 'hand') drag.el.classList.add('lifting');
+      }
+    }
+    const target = dropTarget(e.clientX, e.clientY);
+    hot(target);
+    if (drag.src === 'battlefield') {
+      measure();
+      const left = clamp(e.clientX - G.left - drag.ox, -G.cw / 2, G.W - G.cw / 2);
+      const top = clamp(e.clientY - G.top - drag.oy, -G.ch, G.H + G.ch);
+      drag.el.style.left = left + 'px';
+      drag.el.style.top = top + 'px';
+      if (target === 'battlefield') {
+        const c = S.cards[drag.id];
+        Object.assign(c, toNorm(left, top));
+        renderTable();
+        scheduleSync(true);
+      }
+    } else {
+      drag.ghost.style.left = e.clientX - drag.ox + 'px';
+      drag.ghost.style.top = e.clientY - drag.oy + 'px';
+    }
+  });
+
+  document.addEventListener('pointerup', (e) => {
+    if (!drag) return;
+    const d = drag;
+    drag = null;
+    hot(null);
+    if (d.ghost) d.ghost.remove();
+    if (d.el) { d.el.classList.remove('dragging', 'lifting'); }
+    if (!d.moved) {
+      if (d.src === 'library') drawN(1);
+      else if (d.src === 'graveyard' || d.src === 'exile') openViewer(d.src, true);
+      else renderTable();
+      return;
+    }
+    const target = dropTarget(e.clientX, e.clientY);
+    const c = S.cards[d.id];
+    if (!c) return render();
+    if (target === 'battlefield') {
+      measure();
+      if (d.src === 'battlefield') {
+        const left = e.clientX - G.left - d.ox;
+        const top = e.clientY - G.top - d.oy;
+        Object.assign(c, toNorm(left, top));
+        c.z = ++S.zTop;
+        changed();
+      } else {
+        const p = toNorm(e.clientX - G.left - d.ox, e.clientY - G.top - d.oy);
+        moveCard(d.id, 'battlefield', { x: p.x, y: p.y, faceDown: d.src === 'library' ? false : undefined });
+      }
+    } else if (target === 'hand' && d.src === 'hand') {
+      const cards = $$('#hand .card').filter((x) => x.dataset.id !== d.id);
+      let idx = cards.findIndex((x) => { const r = x.getBoundingClientRect(); return e.clientX < r.left + r.width / 2; });
+      if (idx < 0) idx = cards.length;
+      S.z.hand.splice(S.z.hand.indexOf(d.id), 1);
+      S.z.hand.splice(idx, 0, d.id);
+      changed();
+    } else if (target && target !== d.src) {
+      moveCard(d.id, target, { pos: 'top' });
+    } else render();
+  });
+
+  document.addEventListener('dblclick', (e) => {
+    if (!inGame() || e.target.closest('.modal-back')) return;
+    const bf = e.target.closest('.card.bfc.mine');
+    if (bf) return toggleTap(bf.dataset.id);
+    const hc = e.target.closest('#hand .card');
+    if (hc) return playFromHand(hc.dataset.id);
+  });
+
+  document.addEventListener('contextmenu', (e) => {
+    if (e.target.closest('input, textarea')) return;
+    e.preventDefault();
+    if (!inGame()) return;
+    const x = e.clientX, y = e.clientY;
+    const ctr = e.target.closest('.card.mine .ctr');
+    if (ctr) return addCounter(ctr.closest('.card').dataset.id, ctr.dataset.ctr, -1);
+    const zv = e.target.closest('.card.zv');
+    if (zv && S.viewer) return openMenu(x, y, viewerCardMenu(zv.dataset.id, S.viewer.zone));
+    if (e.target.closest('.modal-back')) return;
+    const mineBf = e.target.closest('.card.bfc.mine');
+    if (mineBf) return openMenu(x, y, bfMenu(S.cards[mineBf.dataset.id]));
+    const oppBf = e.target.closest('.card.bfc.opp');
+    if (oppBf) {
+      const d = pvData(oppBf);
+      return openMenu(x, y, [{ head: d && !d.faceDown ? d.name : 'Face-down card' }, { label: 'Take control', disabled: !S.connected, act: () => send({ t: 'take', id: oppBf.dataset.id }) }]);
+    }
+    const hc = e.target.closest('#hand .card');
+    if (hc) return openMenu(x, y, handMenu(S.cards[hc.dataset.id]));
+    if (e.target.closest('#hand')) return openMenu(x, y, handAreaMenu());
+    if (e.target.closest('#myLib')) return openMenu(x, y, libMenu());
+    if (e.target.closest('#myGy')) return openMenu(x, y, pileMenu('graveyard'));
+    if (e.target.closest('#myEx')) return openMenu(x, y, pileMenu('exile'));
+    if (e.target.closest('#table')) return openMenu(x, y, tableMenu());
+  });
+
+  /* ---------------------------- input: clicks ---------------------------- */
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t.closest('#codeChip')) { navigator.clipboard && navigator.clipboard.writeText(S.code).then(() => toast('Copied room code ' + S.code + '.')); return; }
+    const lifeBtn = t.closest('[data-life]');
+    if (lifeBtn) {
+      const d = Number(lifeBtn.dataset.d) * (e.shiftKey ? 5 : 1);
+      if (lifeBtn.dataset.life === 'me') setLife(S.life + d);
+      else if (S.connected) { send({ t: 'life', d }); if (S.opp) { S.opp.life += d; render(); } }
+      return;
+    }
+    if (t.closest('[data-setlife="me"]')) return askNumber('Set your life total', S.life, setLife);
+    const act = t.closest('#actions [data-act]');
+    if (act) return doAction(act.dataset.act, act);
+    if (t.closest('#oppGy') && S.opp && S.opp.gy.length) return openViewer('graveyard', false);
+    if (t.closest('#oppEx') && S.opp && S.opp.ex.length) return openViewer('exile', false);
+    const zv = t.closest('.card.zv');
+    if (zv && S.viewer) { const r = zv.getBoundingClientRect(); return openMenu(r.left + 10, r.bottom - 10, viewerCardMenu(zv.dataset.id, S.viewer.zone)); }
+    const sbr = t.closest('.sb-row');
+    if (sbr) return swapSb(sbr.dataset.from, sbr.dataset.name);
+  });
+
+  function doAction(a, btn) {
+    const r = btn ? btn.getBoundingClientRect() : { left: window.innerWidth / 2, bottom: window.innerHeight / 2 };
+    switch (a) {
+      case 'draw': return drawN(1);
+      case 'untap': return untapAll();
+      case 'shuffle': return shuffleLibrary();
+      case 'token': return openTokens();
+      case 'dice': return openMenu(r.left, r.bottom + 4, diceItems());
+      case 'tidy': return tidy();
+      case 'sideboard': return openViewer('sideboard', true);
+      case 'hand': return openMenu(r.left, r.bottom + 4, handAreaMenu());
+      case 'endgame': return openEndGame();
+      default: return null;
+    }
+  }
+
+  /* ---------------------------- input: keyboard ---------------------------- */
+  document.addEventListener('keydown', (e) => {
+    if (e.target.closest && e.target.closest('input, textarea, select')) return;
+    if (e.key === 'Escape') {
+      if (menuEl) return closeMenu();
+      if (S.attaching) return cancelAttach();
+      const m = topModal();
+      if (m && m._closable) m._api.close();
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === '?') { if (!topModal()) openHelp(); return; }
+    if (!inGame() || topModal()) return;
+    const k = e.key.toLowerCase();
+    const h = S.hover && S.cards[S.hover] ? S.hover : null;
+    const hz = h ? zoneOf(h) : null;
+    const onBf = hz === 'battlefield';
+    const cardKey = (fn) => { if (h) { e.preventDefault(); fn(); } };
+    switch (k) {
+      case 'd': e.preventDefault(); if (e.shiftKey) askNumber('Draw how many?', 2, (v) => drawN(clamp(v, 1, 99))); else drawN(1); break;
+      case 'u': untapAll(); break;
+      case 's': shuffleLibrary(); break;
+      case 'n': openTokens(); break;
+      case 'y': tidy(); break;
+      case 'r': { const b = $('#actions [data-act="dice"]'); doAction('dice', b); break; }
+      case 't': if (onBf) cardKey(() => toggleTap(h)); break;
+      case 'p': if (hz === 'hand') cardKey(() => playFromHand(h)); break;
+      case 'f': if (onBf) cardKey(() => transform(h)); break;
+      case 'z': if (onBf) cardKey(() => toggleFaceDown(h)); break;
+      case 'c': if (onBf) cardKey(() => copyCard(h)); break;
+      case 'a': if (onBf) cardKey(() => startAttach(h)); break;
+      case '+': case '=': if (onBf) cardKey(() => addCounter(h, '+1/+1', 1)); break;
+      case '-': case '_': if (onBf) cardKey(() => addCounter(h, '+1/+1', -1)); break;
+      case 'h': if (hz && hz !== 'hand') cardKey(() => moveCard(h, 'hand')); break;
+      case 'g': if (hz && hz !== 'graveyard') cardKey(() => moveCard(h, 'graveyard')); break;
+      case 'e': if (hz && hz !== 'exile') cardKey(() => moveCard(h, 'exile')); break;
+      case 'o': if (hz) cardKey(() => moveCard(h, 'library', { pos: 'top' })); break;
+      case 'b': if (hz) cardKey(() => moveCard(h, 'library', { pos: 'bottom' })); break;
+      default: break;
+    }
+  });
+
+  /* ---------------------------- wiring ---------------------------- */
+  function needName() {
+    const n = $('#myName').value.trim().slice(0, 24);
+    if (!n) { lobbyMsg('Enter your name first.', true); $('#myName').focus(); return false; }
+    S.myName = n;
+    store.set('name', n);
+    return true;
+  }
+  $('#myName').value = store.get('name') || '';
+  $('#hostBtn').addEventListener('click', () => { if (needName()) host(); });
+  $('#joinBtn').addEventListener('click', () => { if (needName()) join($('#joinCode').value); });
+  $('#joinCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#joinBtn').click(); });
+  $('#soloBtn').addEventListener('click', () => { if (!needName()) return; S.solo = true; S.role = 'host'; setPhase('deck'); });
+  $('#loadDeckBtn').addEventListener('click', loadDeck);
+  $('#deckText').addEventListener('input', () => { if (S.deck) { S.deck = null; S.meReady = false; deckMsg('List changed: click Load deck again.'); render(); syncNow(); } });
+  $('#readyBtn').addEventListener('click', () => setReady(!S.meReady));
+  $('#sbReadyBtn').addEventListener('click', () => setReady(!S.meReady));
+  $('#editDeckBtn').addEventListener('click', () => { S.meReady = false; setPhase('deck'); deckMsg(S.deck ? 'Current deck is loaded. Edit the list and click Load deck to change it.' : ''); });
+  $('#resetScoreBtn').addEventListener('click', () => { S.score = { host: 0, guest: 0, draw: 0 }; S.lastLoser = null; send({ t: 'resetScore' }); render(); });
+  $('#helpBtn').addEventListener('click', openHelp);
+  $('#smaller').addEventListener('click', () => { S.scale = clamp(S.scale - 0.1, 0.6, 1.6); store.set('scale', S.scale); render(); });
+  $('#bigger').addEventListener('click', () => { S.scale = clamp(S.scale + 0.1, 0.6, 1.6); store.set('scale', S.scale); render(); });
+  window.addEventListener('resize', () => render());
+  window.addEventListener('blur', closeMenu);
+  window.addEventListener('beforeunload', (e) => { if (inGame() && S.connected) { e.preventDefault(); e.returnValue = ''; } });
+
+  // Test hook (harmless in normal use): lets automated tests inspect state.
+  window.__pt = { S, parseList };
+
+  render();
+})();
+
+</script>
+</body>
+</html>
