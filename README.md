@@ -1,7 +1,4 @@
 # kitchen-table
-1v1 battleground for Magic the Gathering Limited matches with friends!
-
-# Cube Playtester
 
 A two-player Magic: The Gathering table that runs in your browser, built for testing cube decks against a friend. It works like Moxfield's playtester, but with your opponent sitting across the table from you.
 
@@ -18,7 +15,7 @@ A two-player Magic: The Gathering table that runs in your browser, built for tes
 ## Getting started
 
 1. **Open the link and enter your name.**
-2. **One player clicks Host** and sends the 5-letter room code to their opponent (click the code at the top of the page to copy it). **The other player types it under Join.** Want to goldfish alone? Click **Practice solo**.
+2. **One player clicks Host** and sends the 5-letter room code to their opponent (click **Copy code** to copy it). **The other player types it under Join.** Want to goldfish alone? Click **Practice solo**.
 3. **Paste your decklist** and click **Load deck**. One card per line, like `1 Lightning Bolt`. Put your sideboard after a `Sideboard` line or after a blank line. Exports from Moxfield and MTGA, and the booster draft's **Copy list** button, all work, set codes included. Anything Scryfall can't find shows up as a plain text card.
 4. **Both players click Ready.** Who goes first is random in game 1; after that, the loser of the previous game plays first. Everyone gets a London mulligan prompt.
 5. **When a game ends,** either player clicks **End game…** and records the result. You'll both go to a sideboarding screen; click a card to move it between your deck and sideboard, then Ready up for the next game.
@@ -32,7 +29,7 @@ A two-player Magic: The Gathering table that runs in your browser, built for tes
 | Do this | To |
 |---|---|
 | Click your library | Draw a card |
-| Right-click your library | Draw X, scry, surveil, look at top X, mill, reveal, search, shuffle |
+| Right-click your library | Draw X, scry, surveil, look at top X, mill, reveal, shuffle |
 | Drag a card | Move it between hand, battlefield, library, graveyard, and exile |
 | Double-click a permanent | Tap or untap it |
 | Double-click a card in hand | Play it |
@@ -55,15 +52,20 @@ Press **?** in the app to see this list anytime.
 | **R** | Dice & coin | **C** | Copy hovered card as a token |
 | **Y** | Tidy battlefield into rows | **A** | Attach hovered card to… |
 | **+ / −** | +1/+1 counter on hovered card | **H / G / E** | Hovered card → hand / graveyard / exile |
-| **Esc** | Close menus and dialogs | **O / B** | Hovered card → top / bottom of library |
+| **L** | Search your library | **O / B** | Hovered card → top / bottom of library |
+| **V** | Hide / show the side panel | **Esc** | Close menus and dialogs |
 
-### Sidebar
+**Searching your library:** press **L** (or right-click your library and choose **Search library…**) to see your whole library, top card first. Type in the filter box (like `mountain` or `land`) to narrow it down, click the card you want, and choose where it goes (hand, battlefield, battlefield tapped, and so on). Click **Shuffle & close** when you're done.
+
+### Side panel
 
 - **Life:** use the − and + buttons (Shift-click for ±5). Click your own total to type a number. You can adjust your opponent's life too.
 - **Token:** search Scryfall for any token, or make a simple custom one.
 - **Dice & coin:** results appear on both players' screens.
 - **Hand…:** reveal your hand, discard at random, or shuffle your hand into your library.
 - **A− / A+** (top bar): resize the cards to fit your screen.
+
+**Want more table space?** Press **V** or click the panel icon in the top bar to hide the side panel. Card previews then pop up right next to whatever you hover, and both life totals move beside the players' names. Everything else is on the right-click menus: right-click the battlefield for untap all, tokens, dice, sideboard, and **End game…**, and right-click your hand for reveal and random discard. The page remembers your choice.
 
 ---
 
