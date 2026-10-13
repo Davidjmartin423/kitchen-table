@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cube Playtester</title>
+<title>kitchen-table</title>
 <style>
 :root {
   --bg: #17191c;
@@ -85,7 +85,27 @@ kbd {
   border-radius: 6px;
   padding: 2px 8px;
   letter-spacing: 2px;
-  cursor: pointer;
+  user-select: text;
+  cursor: text;
+}
+.copybtn { padding: 2px 8px; font-size: 12px; }
+.roombox {
+  background: var(--panel2);
+  border: 1px solid #3d5e94;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.roombox[hidden] { display: none; }
+.rb-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+.rb-row { display: flex; align-items: center; gap: 14px; }
+.rb-code {
+  font: 700 30px ui-monospace, monospace;
+  letter-spacing: 6px;
+  user-select: text;
+  cursor: text;
 }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
 .dot.on { background: var(--good); }
@@ -94,18 +114,44 @@ kbd {
 #scoreline { color: var(--muted); }
 #scoreline b { color: var(--text); }
 .sizer { display: flex; gap: 4px; }
-.sizer button, #helpBtn { padding: 3px 9px; }
+.sizer button, #helpBtn, #panelBtn { padding: 3px 9px; }
+#panelBtn { display: inline-flex; align-items: center; height: 28px; }
+body.collapsed #panelBtn { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- Collapsed side panel ---------- */
+body.collapsed #app { grid-template-columns: 1fr; }
+body.collapsed #side { display: none; }
+body.collapsed #toasts, body.collapsed #banner { left: 50%; }
+.mlife { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; vertical-align: middle; }
+.mlife button { padding: 0 6px; font-size: 12px; font-weight: 700; line-height: 18px; }
+.mlife .life { font-size: 17px; font-weight: 700; color: var(--text); min-width: 24px; text-align: center; cursor: pointer; }
+.mlife .life.opp { cursor: default; }
+#floatPv {
+  position: fixed;
+  z-index: 9600;
+  pointer-events: none;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.65));
+}
+#floatPv[hidden] { display: none; }
+#floatPv .fp-main { width: 250px; display: flex; flex-direction: column; gap: 4px; }
+#floatPv .fp-other { width: 165px; opacity: 0.95; }
+#floatPv img, #floatPv .tcard, #floatPv .cback { width: 100%; aspect-ratio: 0.716; border-radius: 4.5%; display: block; }
+#floatPv .tcard { font-size: 16px; height: auto; }
+#floatPv .pv-cap { background: rgba(10, 12, 14, 0.9); border-radius: 5px; padding: 2px 6px; text-align: center; }
 
 /* ---------- Layout ---------- */
-#app { height: calc(100% - 44px); display: grid; grid-template-columns: 1fr 300px; }
+#app { height: calc(100% - 44px); display: grid; grid-template-columns: 1fr 236px; }
 #play { display: flex; flex-direction: column; min-width: 0; }
 #side {
   background: var(--panel);
   border-left: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 10px;
+  gap: 7px;
+  padding: 8px;
   overflow-y: auto;
 }
 .strip {
@@ -191,7 +237,7 @@ kbd {
   color: #59616b;
   pointer-events: none;
 }
-#oppHalf .tag { top: 6px; }
+#oppHalf .tag { top: 6px; left: 10px; right: auto; }
 #myHalf .tag { bottom: 6px; }
 
 /* ---------- Cards ---------- */
@@ -224,11 +270,12 @@ body.attaching .card.bfc { cursor: crosshair; }
 body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
 .cback {
   background:
-    radial-gradient(circle at 50% 50%, #c9a24a 0 7%, transparent 7.5%),
-    radial-gradient(circle at 50% 50%, #1b2233 0 16%, transparent 16.5%),
-    radial-gradient(circle at 50% 50%, #c9a24a 0 18%, transparent 18.5%),
-    repeating-linear-gradient(45deg, #233049 0 5px, #2a3a58 5px 10px);
-  border: 3px solid #10141c;
+    radial-gradient(circle at 50% 50%, #d9b77a 0 7%, transparent 7.5%),
+    radial-gradient(circle at 50% 50%, #3b2414 0 16%, transparent 16.5%),
+    radial-gradient(circle at 50% 50%, #d9b77a 0 18%, transparent 18.5%),
+    radial-gradient(ellipse at 50% 50%, rgba(255, 214, 150, 0.14), transparent 70%),
+    repeating-linear-gradient(45deg, #5e3c22 0 5px, #6b4528 5px 10px);
+  border: 3px solid #24160c;
 }
 .cback.big { width: 100%; aspect-ratio: 0.716; border-radius: 4.5%; border-width: 8px; }
 .tcard {
@@ -247,7 +294,7 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
 .tcard em { margin-top: auto; align-self: flex-end; font-style: normal; font-weight: 700; font-size: 1.3em; }
 .fdmark {
   position: absolute; top: 4px; left: 4px;
-  font-size: 10px; background: rgba(0, 0, 0, 0.7); border-radius: 3px; padding: 0 4px; color: #f2c94c;
+  font-size: 9px; background: rgba(0, 0, 0, 0.7); border-radius: 3px; padding: 0 3px; color: #f2c94c; white-space: nowrap;
 }
 .ctrs {
   position: absolute;
@@ -280,30 +327,31 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
 #preview { display: flex; flex-direction: column; gap: 8px; align-items: center; }
 #preview img, #preview .tcard, #preview .cback { width: 100%; aspect-ratio: 0.716; border-radius: 4.5%; display: block; }
 #preview .pv-main { width: 100%; }
-#preview .pv-other { width: 60%; opacity: 0.9; }
-#preview .tcard { font-size: 18px; }
+#preview .pv-other { width: 50%; opacity: 0.9; }
+#preview .tcard { font-size: 15px; }
 #preview .empty {
   width: 100%; aspect-ratio: 0.716; border: 1px dashed var(--line); border-radius: 4.5%;
   display: flex; align-items: center; justify-content: center; text-align: center; color: var(--muted); padding: 20px;
 }
-.pv-cap { color: #f2c94c; font-size: 12px; }
+.pv-cap { color: #f2c94c; font-size: 11px; }
 .lifebox {
   display: flex;
   align-items: center;
   gap: 8px;
   background: var(--panel2);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 6px 8px;
+  border-radius: 7px;
+  padding: 3px 6px;
 }
 .lifebox .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 13px; }
-.lifebox .life { font-size: 26px; font-weight: 700; min-width: 44px; text-align: center; cursor: pointer; }
-.lifebox button { padding: 2px 9px; font-weight: 700; }
+.lifebox .life { font-size: 21px; font-weight: 700; min-width: 36px; text-align: center; cursor: pointer; }
+.lifebox button { padding: 0 8px; font-weight: 700; }
 .lifebox.me { border-color: #3d5e94; }
 .lifebox[hidden], .piles[hidden] { display: none; }
-.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.actions button { padding: 4px 7px; font-size: 12.5px; }
 .actions button { text-align: left; display: flex; justify-content: space-between; align-items: center; }
-.actions button kbd { font-size: 11px; }
+.actions button kbd { font-size: 10px; padding: 0 4px; }
 .actions .wide { grid-column: span 2; }
 .side-note { color: var(--muted); font-size: 12px; text-align: center; }
 
@@ -400,6 +448,7 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
 .ctr-row .v { min-width: 30px; text-align: center; font-weight: 700; }
 
 /* sideboarding */
+.vfilter { width: 100%; }
 .sb-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; min-height: 0; }
 .sb-col { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px; max-height: 52vh; overflow-y: auto; }
 .sb-col h4 { margin: 2px 4px 8px; display: flex; justify-content: space-between; }
@@ -414,7 +463,7 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
 /* toasts, banners, help */
 #toasts {
   position: fixed;
-  left: calc(50% - 150px);
+  left: calc(50% - 118px);
   top: 56px;
   transform: translateX(-50%);
   display: flex;
@@ -437,7 +486,7 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
 #banner {
   position: fixed;
   top: 52px;
-  left: calc(50% - 150px);
+  left: calc(50% - 118px);
   transform: translateX(-50%);
   background: #4a3b10;
   border: 1px solid #c9a24a;
@@ -455,7 +504,7 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
 </head>
 <body>
 <header id="top">
-  <div class="brand">Cube <span>Playtester</span></div>
+  <div class="brand">kitchen<span>-table</span></div>
   <div id="status"></div>
   <div class="spacer"></div>
   <div id="scoreline"></div>
@@ -463,6 +512,7 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
     <button id="smaller" title="Smaller cards">A−</button>
     <button id="bigger" title="Bigger cards">A+</button>
   </div>
+  <button id="panelBtn" title="Hide side panel (V)" aria-label="Toggle side panel"><svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="0.75" y="0.75" width="14.5" height="12.5" rx="2"/><line x1="10.5" y1="1" x2="10.5" y2="13"/></svg></button>
   <button id="helpBtn" title="Shortcuts (?)">?</button>
 </header>
 
@@ -512,7 +562,7 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
 
 <div class="overlay" id="lobby" hidden>
   <div class="panel">
-    <h2>Cube Playtester</h2>
+    <h2>kitchen-table</h2>
     <p>Two players, one table. One person hosts and shares the room code; the other joins with it.</p>
     <div class="row">
       <label for="myName">Your name</label>
@@ -537,6 +587,7 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
 
 <div class="overlay" id="deckPanel" hidden>
   <div class="panel">
+    <div class="roombox" id="roomBox" hidden></div>
     <h2>Load your deck</h2>
     <p>Paste a decklist, one card per line, like <code>1 Lightning Bolt</code>. Put your sideboard after a line that says <code>Sideboard</code> (or after a blank line). Set codes and collector numbers are fine.</p>
     <textarea id="deckText" spellcheck="false" placeholder="1 Lightning Bolt
@@ -579,13 +630,14 @@ Sideboard
 <div id="banner" hidden></div>
 <div id="modals"></div>
 <div id="toasts"></div>
+<div id="floatPv" hidden></div>
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 'use strict';
 (() => {
   /* =====================================================================
-   * Cube Playtester: two-player peer-to-peer MTG table.
+   * kitchen-table: two-player peer-to-peer MTG table.
    * Each player's browser is the authority for its own cards. After every
    * change it sends the opponent a "public" snapshot (battlefield, piles,
    * counts). Hidden info is honor-system: hands travel only as counts.
@@ -635,6 +687,7 @@ Sideboard
     hover: null,
     attaching: null,
     scale: Number(store.get('scale')) || 1,
+    collapsed: store.get('collapsed') === '1',
     viewer: null,
   };
   const emptyOpp = (name) => ({ name: name || 'Opponent', life: START_LIFE, hand: 0, library: 0, side: 0, bf: [], gy: [], ex: [], hasDeck: false, ready: false, inGame: false });
@@ -723,11 +776,12 @@ Sideboard
     const r = $('#table').getBoundingClientRect();
     G.W = r.width; G.H = r.height; G.half = r.height / 2; G.left = r.left; G.top = r.top;
   }
-  const spanX = () => Math.max(1, G.W - G.cw);
+  const padX = () => Math.ceil((G.ch - G.cw) / 2) + 2;
+  const spanX = () => Math.max(1, G.W - G.cw - 2 * padX());
   const spanY = () => Math.max(1, G.half - 8 - G.ch);
-  const myPos = (c) => ({ left: c.x * spanX(), top: G.half + 4 + c.y * spanY() });
-  const oppPos = (c) => ({ left: (1 - c.x) * spanX(), top: G.half - 4 - G.ch - c.y * spanY() });
-  const toNorm = (left, top) => ({ x: clamp(left / spanX(), 0, 1), y: clamp((top - G.half - 4) / spanY(), 0, 1) });
+  const myPos = (c) => ({ left: padX() + c.x * spanX(), top: G.half + 4 + c.y * spanY() });
+  const oppPos = (c) => ({ left: padX() + (1 - c.x) * spanX(), top: G.half - 4 - G.ch - c.y * spanY() });
+  const toNorm = (left, top) => ({ x: clamp((left - padX()) / spanX(), 0, 1), y: clamp((top - G.half - 4) / spanY(), 0, 1) });
 
   const ROW_Y = [0.03, 0.5, 0.97];
   function rowOf(c) {
@@ -836,9 +890,18 @@ Sideboard
       S.everConnected = true;
       S.opp = S.opp || emptyOpp();
       banner(null);
-      send({ t: 'hello', name: S.myName });
+      // Messages sent the instant a channel opens are occasionally lost, so
+      // keep saying hello until the other side answers.
+      S.heardHello = false;
+      let tries = 0;
+      const greet = () => {
+        if (S.conn !== c || !S.connected || S.heardHello || tries++ > 20) return;
+        send({ t: 'hello', name: S.myName });
+        syncNow();
+        setTimeout(greet, 800);
+      };
+      greet();
       if (S.phase === 'lobby') setPhase('deck');
-      syncNow();
       render();
     });
     c.on('data', (m) => { try { onMessage(m); } catch (err) { console.error('Bad message', m, err); } });
@@ -886,12 +949,17 @@ Sideboard
   function onMessage(m) {
     if (!m || typeof m !== 'object') return;
     switch (m.t) {
-      case 'hello':
+      case 'hello': {
+        const first = !S.heardHello;
+        S.heardHello = true;
         S.opp = S.opp || emptyOpp();
         S.opp.name = String(m.name || 'Opponent').slice(0, 24);
-        toast(S.opp.name + ' joined the table.');
+        if (!m.reply) send({ t: 'hello', name: S.myName, reply: true });
+        syncNow();
+        if (first) toast(S.opp.name + ' joined the table.');
         render();
         break;
+      }
       case 'full':
         lobbyMsg('That room already has two players.', true);
         break;
@@ -1223,6 +1291,7 @@ Sideboard
   let drag = null;
 
   function render() {
+    if (floatEl._src && !document.body.contains(floatEl._src)) hideFloat();
     renderPanels();
     renderTop();
     sizeCards();
@@ -1237,6 +1306,13 @@ Sideboard
     $('#lobby').hidden = S.phase !== 'lobby';
     $('#deckPanel').hidden = S.phase !== 'deck';
     $('#sbPanel').hidden = S.phase !== 'sideboard';
+    const rb = $('#roomBox');
+    const showRoom = S.phase === 'deck' && S.role === 'host' && !S.solo && !S.connected && !S.everConnected;
+    rb.hidden = !showRoom;
+    if (showRoom && rb._code !== S.code) {
+      rb._code = S.code;
+      rb.innerHTML = '<div class="rb-label">Your room code</div><div class="rb-row"><span class="rb-code">' + esc(S.code) + '</span><button class="primary" data-copycode>Copy code</button></div><div class="msg">Send this to your opponent. They enter it under <b>Join</b>. You can load your deck while you wait.</div>';
+    }
     if (S.phase === 'deck') {
       $('#readyBtn').disabled = !S.deck;
       $('#readyBtn').textContent = S.meReady ? 'Waiting… (click to cancel)' : S.game ? 'Ready for game ' + (S.game + 1) : 'Ready';
@@ -1251,7 +1327,7 @@ Sideboard
   }
   function oppStatusHTML() {
     if (S.solo) return '<span class="dot on"></span> Solo practice';
-    if (!S.connected) return '<span class="dot ' + (S.everConnected ? 'off' : '') + '"></span> ' + (S.everConnected ? oppName() + ' is disconnected.' : 'Waiting for your opponent to join with code <b>' + esc(S.code) + '</b>…');
+    if (!S.connected) return '<span class="dot ' + (S.everConnected ? 'off' : '') + '"></span> ' + (S.everConnected ? oppName() + ' is disconnected.' : 'Waiting for your opponent to join…');
     const o = S.opp || emptyOpp();
     const st = o.ready ? 'is ready.' : o.hasDeck ? 'has loaded a deck.' : 'is loading a deck…';
     return '<span class="dot on"></span> <b>' + esc(o.name) + '</b>&nbsp;' + st;
@@ -1268,7 +1344,7 @@ Sideboard
   function renderTop() {
     let st = '';
     if (S.solo) st = '<span class="dot on"></span> Solo practice';
-    else if (S.role === 'host') st = 'Room <span class="code" id="codeChip" title="Click to copy">' + esc(S.code) + '</span>' + (S.connected ? '<span class="dot on"></span> ' + esc(oppName()) : '<span class="dot ' + (S.everConnected ? 'off' : '') + '"></span> ' + (S.everConnected ? 'Disconnected' : 'Waiting for opponent'));
+    else if (S.role === 'host') st = 'Room <span class="code">' + esc(S.code) + '</span><button class="copybtn" data-copycode title="Copy room code">Copy</button>' + (S.connected ? '<span class="dot on"></span> ' + esc(oppName()) : '<span class="dot ' + (S.everConnected ? 'off' : '') + '"></span> ' + (S.everConnected ? 'Disconnected' : 'Waiting for opponent'));
     else if (S.role === 'guest') st = 'Room <span class="code">' + esc(S.code) + '</span>' + (S.connected ? '<span class="dot on"></span> ' + esc(oppName()) : '<span class="dot off"></span> Disconnected');
     $('#status').innerHTML = st;
     const sc = scoreHTML();
@@ -1339,7 +1415,7 @@ Sideboard
       }).join('');
       if (drag && drag.src === 'hand') { const el = hand.querySelector('[data-id="' + CSS.escape(drag.id) + '"]'); if (el) el.classList.add('lifting'); }
     }
-    $('#myWho').innerHTML = '<b>' + esc(S.myName || 'You') + '</b><br>' + S.z.hand.length + ' in hand' + (S.z.sideboard.length ? ' · ' + S.z.sideboard.length + ' SB' : '');
+    $('#myWho').innerHTML = '<b>' + esc(S.myName || 'You') + '</b>' + (S.collapsed ? miniLife('me', S.life) : '') + '<br>' + S.z.hand.length + ' in hand' + (S.z.sideboard.length ? ' · ' + S.z.sideboard.length + ' SB' : '');
 
     const o = S.opp;
     if (S.solo) {
@@ -1361,7 +1437,7 @@ Sideboard
     setPile($('#oppEx'), pileHTML(o.ex, 'ex', false, 'opp'), o.ex.length > 0, 'oppex');
     const nBacks = Math.min(o.hand, 12);
     $('#oppHand').innerHTML = '<div class="cback"></div>'.repeat(nBacks) + '<span class="n">' + o.hand + ' card' + (o.hand === 1 ? '' : 's') + ' in hand</span>';
-    $('#oppWho').innerHTML = '<b>' + esc(o.name) + '</b><br>' + (S.connected ? (o.side ? o.side + ' SB' : '') : 'disconnected');
+    $('#oppWho').innerHTML = '<b>' + esc(o.name) + '</b>' + (S.collapsed ? miniLife('opp', o.life) : '') + '<br>' + (S.connected ? (o.side ? o.side + ' SB' : '') : 'disconnected');
     $('#oppTag').textContent = o.name + '’s battlefield';
   }
 
@@ -1419,17 +1495,60 @@ Sideboard
     $$('#actions button').forEach((b) => { b.disabled = !inGame() && b.dataset.act !== 'dice'; });
   }
 
+  function miniLife(who, life) {
+    return '<span class="mlife"><button data-life="' + who + '" data-d="-1">−</button><span class="life' + (who === 'me' ? '" data-setlife="me" title="Click to set"' : ' opp"') + '>' + life + '</span><button data-life="' + who + '" data-d="1">+</button></span>';
+  }
+  function previewHTML(d, cls) {
+    if (d.faceDown && !d.mine) return '<div class="' + cls + '-main"><div class="cback"></div><div class="pv-cap">Face-down card</div></div>';
+    const f = curFace(d);
+    const o = otherFace(d);
+    const cap = d.faceDown ? '<div class="pv-cap">Face down: only you can see this</div>' : '';
+    return '<div class="' + cls + '-main">' + faceHTML(f, true) + cap + '</div>' + (o ? '<div class="' + cls + '-other">' + faceHTML(o, true) + '</div>' : '');
+  }
   function showPreview(d) {
     if (!d) return;
     const p = $('#preview');
-    let html;
-    if (d.faceDown && !d.mine) html = '<div class="pv-main"><div class="cback"></div></div><div class="pv-cap">Face-down card</div>';
-    else {
-      const f = curFace(d);
-      const o = otherFace(d);
-      html = '<div class="pv-main">' + faceHTML(f, true) + '</div>' + (d.faceDown ? '<div class="pv-cap">Face down: only you can see this</div>' : '') + (o ? '<div class="pv-other">' + faceHTML(o, true) + '</div>' : '');
-    }
+    const html = previewHTML(d, 'pv');
     if (p._html !== html) { p.innerHTML = html; p._html = html; }
+  }
+
+  /* Floating preview, used when the side panel is collapsed. */
+  const floatEl = $('#floatPv');
+  function showFloat(d, el) {
+    if (!S.collapsed || !d || drag || menuEl) return hideFloat();
+    const html = previewHTML(d, 'fp');
+    if (floatEl._html !== html) { floatEl.innerHTML = html; floatEl._html = html; }
+    floatEl._src = el;
+    floatEl.hidden = false;
+    placeFloat();
+  }
+  function placeFloat() {
+    const el = floatEl._src;
+    if (!el || floatEl.hidden) return;
+    const r = el.getBoundingClientRect();
+    const w = floatEl.offsetWidth, h = floatEl.offsetHeight;
+    const gap = 14;
+    if (el.closest('#hand')) {
+      // Above the hand, so it doesn't cover neighbouring cards.
+      floatEl.style.left = Math.round(clamp(r.left + r.width / 2 - w / 2, 8, window.innerWidth - w - 8)) + 'px';
+      floatEl.style.top = Math.round(Math.max(52, r.top - gap - h)) + 'px';
+      return;
+    }
+    let x = r.right + gap;
+    if (x + w > window.innerWidth - 8) x = r.left - gap - w;
+    if (x < 8) x = clamp(r.left + r.width / 2 - w / 2, 8, window.innerWidth - w - 8);
+    const y = clamp(r.top + r.height / 2 - h / 2, 52, Math.max(52, window.innerHeight - h - 8));
+    floatEl.style.left = Math.round(x) + 'px';
+    floatEl.style.top = Math.round(y) + 'px';
+  }
+  function hideFloat() { floatEl.hidden = true; floatEl._src = null; }
+  function setCollapsed(v) {
+    S.collapsed = v;
+    store.set('collapsed', v ? '1' : '0');
+    document.body.classList.toggle('collapsed', v);
+    $('#panelBtn').title = (v ? 'Show' : 'Hide') + ' side panel (V)';
+    hideFloat();
+    render();
   }
 
   /* ---------------------------- menus ---------------------------- */
@@ -1464,6 +1583,7 @@ Sideboard
   }
   function openMenu(x, y, items) {
     closeMenu();
+    hideFloat();
     menuEl = buildMenu(items);
     document.body.appendChild(menuEl);
     const r = menuEl.getBoundingClientRect();
@@ -1576,6 +1696,7 @@ Sideboard
     return [
       { head: c.name },
       ...dests.map(([z, l]) => ({ label: l, act: () => moveCard(id, z) })),
+      zone !== 'battlefield' && { label: 'To battlefield tapped', act: () => moveCard(id, 'battlefield', { tapped: true }) },
       zone !== 'battlefield' && { label: 'To battlefield face down', act: () => moveCard(id, 'battlefield', { faceDown: true }) },
       { label: 'Library', sub: libMoves(id) },
       !S.solo && { label: 'Reveal to ' + oppName(), act: () => reveal(c.name, [id]) },
@@ -1588,6 +1709,9 @@ Sideboard
       { label: 'Tidy battlefield', key: 'Y', act: tidy },
       { sep: true },
       { label: 'Dice & coin', sub: diceItems() },
+      { sep: true },
+      { label: 'View sideboard', act: () => openViewer('sideboard', true) },
+      { label: 'End game…', act: openEndGame },
     ];
   }
   const diceItems = () => [
@@ -1737,8 +1861,12 @@ Sideboard
     const buttons = zone === 'library'
       ? [{ label: 'Close' }, { label: 'Shuffle & close', primary: true, act: () => shuffleLibrary() }]
       : [{ label: 'Close', primary: true }];
+    wrap.innerHTML = '<input class="vfilter" placeholder="Filter by name or type, e.g. mountain, land, creature" autocomplete="off"><div class="vbody"></div>';
     const m = openModal({ title: who + titles[zone].toLowerCase(), body: wrap, wide: true, buttons, onClose: () => { if (S.viewer && S.viewer.m === m) S.viewer = null; } });
-    S.viewer = { zone, mine, m, wrap };
+    S.viewer = { zone, mine, m, wrap: $('.vbody', wrap), q: '' };
+    const box = $('.vfilter', wrap);
+    box.addEventListener('input', () => { if (S.viewer) { S.viewer.q = box.value; renderViewer(); } });
+    box.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); if (box.value) { box.value = ''; S.viewer.q = ''; renderViewer(); } else m.close(); } });
     renderViewer();
     if (zone === 'library' && !S.solo) send({ t: 'toast', text: S.myName + ' is searching their library.' });
   }
@@ -1753,8 +1881,14 @@ Sideboard
       const o = S.opp || emptyOpp();
       cards = (v.zone === 'graveyard' ? o.gy : o.ex).slice().reverse();
     }
-    const html = cards.length
-      ? '<p class="msg">' + (v.mine ? 'Click a card for options.' : 'Hover to preview.') + (v.zone !== 'library' && v.zone !== 'sideboard' ? ' Most recent first.' : '') + '</p><div class="grid mid">' + cards.map((c) => simpleCard(c, 'zv:' + c.id, v.mine, v.mine ? 'zv' : 'opp')).join('') + '</div>'
+    const total = cards.length;
+    const q = norm(v.q || '');
+    if (q) {
+      const hay = (c) => [c.name, c.type, c.back && c.back.name, c.back && c.back.type].filter(Boolean).join(' ');
+      cards = cards.filter((c) => (v.mine || !c.faceDown) && norm(hay(c)).includes(q));
+    }
+    const html = q && !cards.length ? '<p class="grid empty">No cards match \u201c' + esc(v.q) + '\u201d (' + total + ' in this zone).</p>' : cards.length
+      ? '<p class="msg">' + (q ? cards.length + ' of ' + total + ' cards. ' : '') + (v.mine ? 'Click a card for options.' : 'Hover to preview.') + (v.zone !== 'library' && v.zone !== 'sideboard' ? ' Most recent first.' : '') + '</p><div class="grid mid">' + cards.map((c) => simpleCard(c, 'zv:' + c.id, v.mine, v.mine ? 'zv' : 'opp')).join('') + '</div>'
       : '<p class="grid empty">Empty.</p>';
     if (v.wrap._html !== html) { v.wrap.innerHTML = html; v.wrap._html = html; }
   }
@@ -1833,17 +1967,17 @@ Sideboard
   function openHelp() {
     const keys = [
       ['D', 'Draw a card'], ['⇧ D', 'Draw X'], ['U', 'Untap all'], ['S', 'Shuffle library'],
-      ['N', 'Create token'], ['R', 'Dice & coin'], ['Y', 'Tidy battlefield'], ['?', 'This help'],
+      ['N', 'Create token'], ['R', 'Dice & coin'], ['Y', 'Tidy battlefield'], ['L', 'Search library'],
       ['T', 'Tap / untap hovered'], ['P', 'Play hovered card from hand'], ['F', 'Transform hovered'], ['Z', 'Face down / up'],
       ['C', 'Copy hovered (token)'], ['A', 'Attach hovered to…'], ['+ / −', '+1/+1 counter on hovered'], ['H', 'Hovered → hand'],
       ['G', 'Hovered → graveyard'], ['E', 'Hovered → exile'], ['O', 'Hovered → top of library'], ['B', 'Hovered → bottom of library'],
-      ['Esc', 'Close menus & dialogs'],
+      ['V', 'Hide / show side panel'], ['?', 'This help'], ['Esc', 'Close menus & dialogs'],
     ];
     openModal({
       title: 'Shortcuts',
       wide: true,
       body: '<div class="help-grid">' + keys.map(([k, d]) => '<kbd>' + k + '</kbd><span>' + d + '</span>').join('') + '</div>' +
-        '<ul class="help-mouse"><li>Click your library to draw; right-click it for scry, surveil, mill, search and more.</li><li>Drag cards between your hand, battlefield, library, graveyard and exile.</li><li>Double-click a permanent to tap it; double-click a card in hand to play it.</li><li>Right-click anything for its full menu. Click a counter badge for +1, right-click for −1.</li><li>Right-click an opponent’s permanent to take control of it.</li></ul>',
+        '<ul class="help-mouse"><li>Click your library to draw; right-click it for scry, surveil, mill and more. Press L to search it, then type in the filter box (e.g. \u201cmountain\u201d).</li><li>Drag cards between your hand, battlefield, library, graveyard and exile.</li><li>Double-click a permanent to tap it; double-click a card in hand to play it.</li><li>Right-click anything for its full menu. Click a counter badge for +1, right-click for −1.</li><li>Right-click an opponent’s permanent to take control of it.</li></ul>',
       buttons: [{ label: 'Close', primary: true }],
     });
   }
@@ -1874,6 +2008,31 @@ Sideboard
     render();
   }
 
+  /* ---------------------------- copy room code ---------------------------- */
+  function copyCode(btn) {
+    const done = (ok) => {
+      if (ok) {
+        const old = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.disabled = true;
+        setTimeout(() => { btn.textContent = old; btn.disabled = false; }, 1500);
+      } else toast('Couldn\u2019t copy automatically. Highlight the code and press Ctrl+C.');
+    };
+    const fallback = () => {
+      const ta = document.createElement('textarea');
+      ta.value = S.code;
+      ta.style.cssText = 'position:fixed;opacity:0;';
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      ta.remove();
+      done(ok);
+    };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(S.code).then(() => done(true), fallback);
+    else fallback();
+  }
+
   /* ---------------------------- toasts & banner ---------------------------- */
   function toast(text, ms = 3500, big = false) {
     if (!text) return;
@@ -1894,12 +2053,12 @@ Sideboard
     const el = e.target.closest('[data-pv]');
     if (!el) return;
     const d = pvData(el);
-    if (d) showPreview(d);
+    if (d) { showPreview(d); showFloat(d, el); }
     S.hover = d && d.mine && el.dataset.id && S.cards[el.dataset.id] ? el.dataset.id : null;
   });
   document.addEventListener('pointerout', (e) => {
     const el = e.target.closest('[data-pv]');
-    if (el && !el.contains(e.relatedTarget)) S.hover = null;
+    if (el && !el.contains(e.relatedTarget)) { S.hover = null; if (floatEl._src === el) hideFloat(); }
   });
 
   function dropTarget(x, y) {
@@ -1954,6 +2113,7 @@ Sideboard
     if (!drag.moved) {
       if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 5 || !drag.id) return;
       drag.moved = true;
+      hideFloat();
       closeMenu();
       if (drag.src === 'battlefield') {
         drag.el.classList.add('dragging');
@@ -2067,7 +2227,8 @@ Sideboard
   /* ---------------------------- input: clicks ---------------------------- */
   document.addEventListener('click', (e) => {
     const t = e.target;
-    if (t.closest('#codeChip')) { navigator.clipboard && navigator.clipboard.writeText(S.code).then(() => toast('Copied room code ' + S.code + '.')); return; }
+    const cc = t.closest('[data-copycode]');
+    if (cc) { copyCode(cc); return; }
     const lifeBtn = t.closest('[data-life]');
     if (lifeBtn) {
       const d = Number(lifeBtn.dataset.d) * (e.shiftKey ? 5 : 1);
@@ -2114,6 +2275,7 @@ Sideboard
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === '?') { if (!topModal()) openHelp(); return; }
+    if (e.key.toLowerCase() === 'v' && !topModal()) { setCollapsed(!S.collapsed); return; }
     if (!inGame() || topModal()) return;
     const k = e.key.toLowerCase();
     const h = S.hover && S.cards[S.hover] ? S.hover : null;
@@ -2126,6 +2288,7 @@ Sideboard
       case 's': shuffleLibrary(); break;
       case 'n': openTokens(); break;
       case 'y': tidy(); break;
+      case 'l': e.preventDefault(); openViewer('library', true); break;
       case 'r': { const b = $('#actions [data-act="dice"]'); doAction('dice', b); break; }
       case 't': if (onBf) cardKey(() => toggleTap(h)); break;
       case 'p': if (hz === 'hand') cardKey(() => playFromHand(h)); break;
@@ -2164,6 +2327,8 @@ Sideboard
   $('#editDeckBtn').addEventListener('click', () => { S.meReady = false; setPhase('deck'); deckMsg(S.deck ? 'Current deck is loaded. Edit the list and click Load deck to change it.' : ''); });
   $('#resetScoreBtn').addEventListener('click', () => { S.score = { host: 0, guest: 0, draw: 0 }; S.lastLoser = null; send({ t: 'resetScore' }); render(); });
   $('#helpBtn').addEventListener('click', openHelp);
+  $('#panelBtn').addEventListener('click', () => setCollapsed(!S.collapsed));
+  window.addEventListener('scroll', placeFloat, true);
   $('#smaller').addEventListener('click', () => { S.scale = clamp(S.scale - 0.1, 0.6, 1.6); store.set('scale', S.scale); render(); });
   $('#bigger').addEventListener('click', () => { S.scale = clamp(S.scale + 0.1, 0.6, 1.6); store.set('scale', S.scale); render(); });
   window.addEventListener('resize', () => render());
@@ -2173,7 +2338,7 @@ Sideboard
   // Test hook (harmless in normal use): lets automated tests inspect state.
   window.__pt = { S, parseList };
 
-  render();
+  setCollapsed(S.collapsed);
 })();
 
 </script>
