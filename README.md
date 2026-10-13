@@ -2,7 +2,7 @@
 
 A two-player Magic: The Gathering table that runs in your browser, built for testing cube decks against a friend. It works like Moxfield's playtester, but with your opponent sitting across the table from you.
 
-**▶ Play it here: https://YOUR-USERNAME.github.io/REPO-NAME/**
+**▶ Play it here: https://davidjmartin423.github.io/kitchen-table/**
 
 - No accounts or installs. Open the link, paste a decklist, and share a room code.
 - The two browsers connect directly to each other (peer-to-peer over WebRTC).
