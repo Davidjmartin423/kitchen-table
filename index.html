@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>kitchen-table</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg transform='rotate%28-14 32 36%29'%3E%3Crect x='9' y='12' width='30' height='42' rx='4' fill='%234a2f1a' stroke='%231e130a' stroke-width='2.5'/%3E%3C/g%3E%3Cg transform='rotate%2810 32 36%29'%3E%3Crect x='25' y='10' width='30' height='42' rx='4' fill='%237a4f2c' stroke='%2324160c' stroke-width='2.5'/%3E%3Ccircle cx='40' cy='31' r='8' fill='none' stroke='%23e2c084' stroke-width='3'/%3E%3Ccircle cx='40' cy='31' r='2.6' fill='%23e2c084'/%3E%3C/g%3E%3C/svg%3E">
 <style>
 :root {
   --bg: #17191c;
@@ -99,6 +100,9 @@ kbd {
   gap: 8px;
 }
 .roombox[hidden] { display: none; }
+.mullopt { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; margin-right: 8px; cursor: pointer; user-select: none; }
+.mullopt input { margin: 0; }
+.mullopt.locked { cursor: default; opacity: 0.75; }
 .rb-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
 .rb-row { display: flex; align-items: center; gap: 14px; }
 .rb-code {
@@ -223,6 +227,33 @@ body.collapsed #toasts, body.collapsed #banner { left: 50%; }
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 #oppHand .n { margin-left: 16px; color: var(--muted); font-size: 13px; }
+.handbacks { display: flex; align-items: center; height: 100%; }
+.handbacks .cback {
+  width: calc(var(--cw) * 0.55);
+  height: calc(var(--ch) * 0.55);
+  border-radius: 5px;
+  margin-right: -10px;
+  flex: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.handbacks .n { margin-left: 20px; color: var(--muted); font-size: 13px; }
+#specNote {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(20, 22, 25, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 20px;
+  color: var(--muted);
+  z-index: 5;
+  pointer-events: none;
+  text-align: center;
+}
+#specNote[hidden] { display: none; }
+.watchers { color: var(--muted); }
+.lifebox.ro .life { cursor: default; }
 
 /* ---------- Table ---------- */
 #table { position: relative; flex: 1; overflow: hidden; min-height: 0; }
@@ -348,6 +379,7 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
 .lifebox button { padding: 0 8px; font-weight: 700; }
 .lifebox.me { border-color: #3d5e94; }
 .lifebox[hidden], .piles[hidden] { display: none; }
+.actions[hidden], .lifebox[hidden] { display: none !important; }
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .actions button { padding: 4px 7px; font-size: 12.5px; }
 .actions button { text-align: left; display: flex; justify-content: space-between; align-items: center; }
@@ -529,7 +561,8 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
     </div>
     <div id="table">
       <div id="oppHalf" class="half"><div class="tag" id="oppTag"></div></div>
-      <div id="myHalf" class="half"><div class="tag">Your battlefield</div></div>
+      <div id="myHalf" class="half"><div class="tag" id="myTag">Your battlefield</div></div>
+      <div id="specNote" hidden></div>
     </div>
     <div id="myStrip" class="strip me">
       <div class="piles">
@@ -576,8 +609,8 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
       </div>
       <div class="choice">
         <h4>Join a game</h4>
-        <p>Enter the code your opponent sent you.</p>
-        <div class="row"><input id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off"><button class="primary" id="joinBtn">Join</button></div>
+        <p>Enter the room code, then <b>Join</b> to play or <b>Watch</b> to spectate.</p>
+        <div class="row"><input id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off"><button class="primary" id="joinBtn">Join</button><button id="watchBtn">Watch</button></div>
       </div>
     </div>
     <div class="row"><button class="ghost" id="soloBtn">Practice solo (no opponent)</button></div>
@@ -603,6 +636,8 @@ Sideboard
     </div>
     <div class="opp-status" id="oppDeckStatus"></div>
     <div class="row end">
+      <label class="mullopt freeopt" title="Table rule set by the host: your first mulligan doesn't cost a card."><input type="checkbox" class="freeMull"> Free first mulligan</label>
+      <label class="mullopt" title="When off, you start with 7 cards and no pop-up. You can still mulligan from your hand's right-click menu."><input type="checkbox" class="askMull"> Ask about mulligans</label>
       <button class="primary" id="readyBtn" disabled>Ready</button>
     </div>
   </div>
@@ -622,6 +657,8 @@ Sideboard
       <button class="ghost" id="editDeckBtn">Paste a different list</button>
       <button class="ghost" id="resetScoreBtn">Reset match score</button>
       <div class="spacer"></div>
+      <label class="mullopt freeopt" title="Table rule set by the host: your first mulligan doesn't cost a card."><input type="checkbox" class="freeMull"> Free first mulligan</label>
+      <label class="mullopt" title="When off, you start with 7 cards and no pop-up. You can still mulligan from your hand's right-click menu."><input type="checkbox" class="askMull"> Ask about mulligans</label>
       <button class="primary" id="sbReadyBtn">Ready</button>
     </div>
   </div>
@@ -688,6 +725,11 @@ Sideboard
     attaching: null,
     scale: Number(store.get('scale')) || 1,
     collapsed: store.get('collapsed') === '1',
+    askMull: store.get('askMull') !== '0',
+    freeMull: store.get('freeMull') === '1', // host's table rule
+    gameFree: false, // rule in effect for the current game
+    specs: [], // host only: spectator connections
+    sv: { host: null, guest: null, meta: {} }, // spectator only: what we're watching
     viewer: null,
   };
   const emptyOpp = (name) => ({ name: name || 'Opponent', life: START_LIFE, hand: 0, library: 0, side: 0, bf: [], gy: [], ex: [], hasDeck: false, ready: false, inGame: false });
@@ -845,6 +887,7 @@ Sideboard
       toast('Room open. Send your opponent the code ' + S.code + '.', 6000);
     });
     peer.on('connection', (c) => {
+      if (c.metadata && c.metadata.spectate) { setupSpec(c); return; }
       if (S.conn && S.connected) {
         c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 400); });
         return;
@@ -858,11 +901,11 @@ Sideboard
     });
   }
 
-  function join(code) {
+  function join(code, watch) {
     if (!window.Peer) return lobbyMsg('Could not load the connection library. Check your internet connection and reload.', true);
     code = code.trim().toUpperCase();
     if (code.length !== 5) return lobbyMsg('Room codes are 5 characters.', true);
-    S.role = 'guest';
+    S.role = watch ? 'spectator' : 'guest';
     S.code = code;
     lobbyMsg('Connecting…');
     const peer = new Peer(peerOptions());
@@ -871,8 +914,9 @@ Sideboard
       if (!S.connected) lobbyMsg('Still trying… If this doesn’t connect, one of your networks may block direct connections.', true);
     }, 15000);
     peer.on('open', () => {
-      const c = peer.connect(PREFIX + code, { reliable: true, serialization: 'json' });
-      setupConn(c, () => clearTimeout(timer));
+      const c = peer.connect(PREFIX + code, { reliable: true, serialization: 'json', metadata: watch ? { spectate: true } : undefined });
+      if (watch) setupWatch(c, () => clearTimeout(timer));
+      else setupConn(c, () => clearTimeout(timer));
     });
     peer.on('error', (e) => {
       clearTimeout(timer);
@@ -880,6 +924,17 @@ Sideboard
       else lobbyMsg('Connection problem: ' + (e.message || e.type), true);
       if (S.phase === 'lobby') { S.role = null; peer.destroy(); }
     });
+  }
+
+  /** Pings a connection every few seconds; if nothing arrives for 12s, treat it as gone. */
+  function heartbeat(c, onDead) {
+    c._seen = Date.now();
+    c.on('data', () => { c._seen = Date.now(); });
+    const iv = setInterval(() => {
+      if (c._dead) return clearInterval(iv);
+      if (c.open) { try { c.send({ t: 'ping' }); } catch (e) { /* ignore */ } }
+      if (Date.now() - c._seen > 12000) { clearInterval(iv); c._dead = true; try { c.close(); } catch (e) { /* ignore */ } onDead(); }
+    }, 3000);
   }
 
   function setupConn(c, onOpen) {
@@ -905,22 +960,114 @@ Sideboard
       render();
     });
     c.on('data', (m) => { try { onMessage(m); } catch (err) { console.error('Bad message', m, err); } });
-    c.on('close', () => {
+    const gone = () => {
       if (S.conn !== c) return;
+      c._dead = true;
       S.connected = false;
       S.conn = null;
+      relay();
       banner(oppName() + ' disconnected. ' + (S.role === 'host' ? 'They can rejoin with code ' + S.code + '.' : 'Ask them for a new code and reload this page.'));
       render();
-    });
+    };
+    c.on('close', gone);
+    heartbeat(c, gone);
     c.on('error', (e) => console.warn('connection error', e));
   }
 
-  function send(m) { if (S.conn && S.connected) { try { S.conn.send(m); } catch (e) { console.warn(e); } } }
+  function send(m) {
+    if (S.conn && S.connected) { try { S.conn.send(m); } catch (e) { console.warn(e); } }
+    if (S.role === 'host' && (m.t === 'toast' || m.t === 'reveal')) specBroadcast(m);
+  }
+
+  /* ---------------------------- spectators ---------------------------- */
+  const liveSpecs = () => S.specs.filter((sp) => sp.open && sp.named);
+  function specBroadcast(m) { liveSpecs().forEach((sp) => { try { sp.c.send(m); } catch (e) { console.warn(e); } }); }
+  function specView() {
+    return {
+      t: 'view',
+      host: pubState(),
+      guest: S.everConnected && S.opp ? S.opp : null,
+      meta: { code: S.code, score: S.score, game: S.game, guestConnected: S.connected, watchers: liveSpecs().length },
+    };
+  }
+  function relay() { if (S.role === 'host' && liveSpecs().length) specBroadcast(specView()); }
+
+  /** Host side: a spectator connected. */
+  function setupSpec(c) {
+    const sp = { c, name: 'A spectator', open: false, named: false };
+    S.specs.push(sp);
+    c.on('open', () => { sp.open = true; });
+    c.on('data', (m) => {
+      if (!m || m.t !== 'watch') return;
+      const first = !sp.named;
+      sp.named = true;
+      sp.name = String(m.name || 'A spectator').slice(0, 24);
+      try { c.send(specView()); } catch (e) { console.warn(e); }
+      if (first) {
+        toast(sp.name + ' is watching.');
+        send({ t: 'toast', text: sp.name + ' is watching.' });
+        syncNow();
+        render();
+      }
+    });
+    const gone = () => {
+      if (sp.gone) return;
+      sp.gone = true;
+      c._dead = true;
+      S.specs = S.specs.filter((x) => x !== sp);
+      if (sp.named) { toast(sp.name + ' stopped watching.'); send({ t: 'toast', text: sp.name + ' stopped watching.' }); }
+      syncNow();
+      render();
+    };
+    c.on('close', gone);
+    heartbeat(c, gone);
+    c.on('error', (e) => console.warn('spectator connection error', e));
+  }
+
+  /** Spectator side: connected to the host. */
+  function setupWatch(c, onOpen) {
+    S.conn = c;
+    c.on('open', () => {
+      if (onOpen) onOpen();
+      S.connected = true;
+      S.everConnected = true;
+      S.gotView = false;
+      let tries = 0;
+      const greet = () => {
+        if (S.conn !== c || !S.connected || S.gotView || tries++ > 20) return;
+        send({ t: 'watch', name: S.myName });
+        setTimeout(greet, 800);
+      };
+      greet();
+      setPhase('watching');
+    });
+    c.on('data', (m) => {
+      if (!m || typeof m !== 'object') return;
+      if (m.t === 'view') {
+        S.gotView = true;
+        S.sv = { host: m.host || null, guest: m.guest || null, meta: m.meta || {} };
+        render();
+      } else if (m.t === 'toast') toast(String(m.text || ''), m.big ? 6000 : 4000, m.big);
+      else if (m.t === 'reveal') showReveal(String(m.title || 'Revealed'), m.cards || []);
+      else if (m.t === 'full') lobbyMsg('That room is not accepting spectators.', true);
+    });
+    const gone = () => {
+      if (S.conn !== c) return;
+      c._dead = true;
+      S.connected = false;
+      S.conn = null;
+      banner('Lost connection to the host. Ask for the room code again and reload this page to keep watching.');
+      render();
+    };
+    c.on('close', gone);
+    heartbeat(c, gone);
+    c.on('error', (e) => console.warn('connection error', e));
+  }
 
   let syncTimer = null;
   let lastSync = 0;
   function scheduleSync(throttled) {
-    if (!S.connected || syncTimer) return;
+    if (S.role === 'spectator' || (!S.connected && !liveSpecs().length) || syncTimer) return;
     const wait = throttled ? Math.max(0, 70 - (Date.now() - lastSync)) : 0;
     syncTimer = setTimeout(syncNow, wait);
   }
@@ -928,7 +1075,9 @@ Sideboard
     clearTimeout(syncTimer);
     syncTimer = null;
     lastSync = Date.now();
+    if (S.role === 'spectator') return;
     send({ t: 'state', s: pubState() });
+    relay();
   }
   function pubCard(c) {
     const o = { id: c.id, owner: c.owner, x: c.x, y: c.y, z: c.z, tapped: c.tapped, rot: c.rot, counters: c.counters, attachedTo: c.attachedTo, token: c.token, faceDown: c.faceDown };
@@ -943,6 +1092,8 @@ Sideboard
       gy: S.z.graveyard.map((i) => pubCard(S.cards[i])),
       ex: S.z.exile.map((i) => pubCard(S.cards[i])),
       hasDeck: !!S.deck, ready: S.meReady, inGame: S.phase === 'playing', game: S.game,
+      watchers: S.role === 'host' ? liveSpecs().length : 0,
+      freeMull: S.role === 'host' ? S.freeMull : undefined,
     };
   }
 
@@ -967,11 +1118,12 @@ Sideboard
         const s = m.s || {};
         S.opp = { ...emptyOpp(), ...s, name: String(s.name || oppName()).slice(0, 24) };
         maybeStart();
+        relay();
         render();
         break;
       }
       case 'start':
-        startGame(m.game, m.first);
+        startGame(m.game, m.first, !!m.free);
         break;
       case 'result':
         applyResult(m.winner);
@@ -979,6 +1131,7 @@ Sideboard
       case 'resetScore':
         S.score = { host: 0, guest: 0, draw: 0 }; S.lastLoser = null; render();
         toast(oppName() + ' reset the match score.');
+        relay();
         break;
       case 'give': {
         const c = m.card;
@@ -1011,9 +1164,11 @@ Sideboard
       }
       case 'reveal':
         showReveal(m.title, m.cards || []);
+        if (S.role === 'host') specBroadcast(m);
         break;
       case 'toast':
         toast(String(m.text || ''), m.big ? 6000 : 4000, m.big);
+        if (S.role === 'host') specBroadcast(m);
         break;
       case 'life':
         S.life += Number(m.d) || 0;
@@ -1038,7 +1193,7 @@ Sideboard
 
   function setReady(v) {
     S.meReady = v;
-    if (S.solo && v) { startGame(S.game + 1, 'host'); return; }
+    if (S.solo && v) { startGame(S.game + 1, 'host', S.freeMull); return; }
     syncNow();
     maybeStart();
     render();
@@ -1048,12 +1203,14 @@ Sideboard
     if (!S.meReady || !S.opp || !S.opp.ready || !S.connected) return;
     const first = S.lastLoser || (rnd(2) ? 'host' : 'guest');
     const g = S.game + 1;
-    send({ t: 'start', game: g, first });
-    startGame(g, first);
+    send({ t: 'start', game: g, first, free: S.freeMull });
+    specBroadcast({ t: 'toast', text: 'Game ' + g + ': ' + (first === 'host' ? S.myName : oppName()) + ' plays first.', big: true });
+    startGame(g, first, S.freeMull);
   }
 
-  function startGame(g, first) {
+  function startGame(g, first, free) {
     S.game = g;
+    S.gameFree = !!free;
     S.phase = 'playing';
     S.meReady = false;
     S.cards = {};
@@ -1071,7 +1228,7 @@ Sideboard
     render();
     syncNow();
     if (!S.solo) toast('Game ' + g + ': ' + (first === S.role ? 'you play first.' : oppName() + ' plays first.'), 6000, true);
-    openMulligan();
+    if (S.askMull) openMulligan();
   }
 
   function applyResult(w) {
@@ -1083,6 +1240,7 @@ Sideboard
     S.viewer = null;
     const who = w === 'draw' ? 'Game ' + S.game + ' was a draw.' : (w === S.role ? 'You won' : oppName() + ' won') + ' game ' + S.game + '.';
     toast(who, 5000, true);
+    if (S.role === 'host') specBroadcast({ t: 'toast', text: w === 'draw' ? 'Game ' + S.game + ' was a draw.' : (w === 'host' ? S.myName : oppName()) + ' won game ' + S.game + '.', big: true });
     setPhase('sideboard');
   }
 
@@ -1296,9 +1454,9 @@ Sideboard
     renderTop();
     sizeCards();
     measure();
-    renderStrips();
+    if (S.role === 'spectator') renderStripsSpec(); else renderStrips();
     renderTable();
-    renderSide();
+    if (S.role === 'spectator') renderSideSpec(); else renderSide();
     renderViewer();
   }
 
@@ -1313,6 +1471,14 @@ Sideboard
       rb._code = S.code;
       rb.innerHTML = '<div class="rb-label">Your room code</div><div class="rb-row"><span class="rb-code">' + esc(S.code) + '</span><button class="primary" data-copycode>Copy code</button></div><div class="msg">Send this to your opponent. They enter it under <b>Join</b>. You can load your deck while you wait.</div>';
     }
+    const isHostish = S.role !== 'guest' && S.role !== 'spectator';
+    const freeOn = isHostish ? S.freeMull : !!(S.opp && S.opp.freeMull);
+    $$('.freeMull').forEach((cb) => {
+      cb.checked = freeOn;
+      cb.disabled = !isHostish;
+      cb.parentElement.title = isHostish ? 'Table rule for both players: your first mulligan each game doesn\u2019t cost a card.' : 'Set by the host (' + oppName() + ').';
+      cb.parentElement.classList.toggle('locked', !isHostish);
+    });
     if (S.phase === 'deck') {
       $('#readyBtn').disabled = !S.deck;
       $('#readyBtn').textContent = S.meReady ? 'Waiting… (click to cancel)' : S.game ? 'Ready for game ' + (S.game + 1) : 'Ready';
@@ -1346,9 +1512,20 @@ Sideboard
     if (S.solo) st = '<span class="dot on"></span> Solo practice';
     else if (S.role === 'host') st = 'Room <span class="code">' + esc(S.code) + '</span><button class="copybtn" data-copycode title="Copy room code">Copy</button>' + (S.connected ? '<span class="dot on"></span> ' + esc(oppName()) : '<span class="dot ' + (S.everConnected ? 'off' : '') + '"></span> ' + (S.everConnected ? 'Disconnected' : 'Waiting for opponent'));
     else if (S.role === 'guest') st = 'Room <span class="code">' + esc(S.code) + '</span>' + (S.connected ? '<span class="dot on"></span> ' + esc(oppName()) : '<span class="dot off"></span> Disconnected');
+    else if (S.role === 'spectator') st = '<span class="dot ' + (S.connected ? 'on' : 'off') + '"></span> Watching room <span class="code">' + esc(S.code) + '</span>';
+    const nw = S.role === 'host' ? liveSpecs().length : S.role === 'guest' ? (S.opp && S.opp.watchers) || 0 : S.role === 'spectator' ? S.sv.meta.watchers || 0 : 0;
+    if (nw) st += '<span class="watchers">· ' + nw + ' watching</span>';
     $('#status').innerHTML = st;
-    const sc = scoreHTML();
-    $('#scoreline').innerHTML = S.game || S.score.host || S.score.guest ? [S.phase === 'playing' ? 'Game ' + S.game : '', sc].filter(Boolean).join(' · ') : '';
+    if (S.role === 'spectator') {
+      const { host: h, guest: g, meta } = S.sv;
+      const sco = meta.score || { host: 0, guest: 0, draw: 0 };
+      const live = (h && h.inGame) || (g && g.inGame);
+      let line = h && g ? esc(h.name) + ' <b>' + sco.host + '</b> – <b>' + sco.guest + '</b> ' + esc(g.name) + (sco.draw ? ' (' + sco.draw + ' draw' + (sco.draw > 1 ? 's' : '') + ')' : '') : '';
+      $('#scoreline').innerHTML = [live && meta.game ? 'Game ' + meta.game : '', line].filter(Boolean).join(' · ');
+    } else {
+      const sc = scoreHTML();
+      $('#scoreline').innerHTML = S.game || S.score.host || S.score.guest ? [S.phase === 'playing' ? 'Game ' + S.game : '', sc].filter(Boolean).join(' · ') : '';
+    }
     $('#oppStrip .piles').hidden = S.solo;
   }
 
@@ -1443,12 +1620,27 @@ Sideboard
 
   function renderTable() {
     const table = $('#table');
-    const mine = inGame() ? S.z.battlefield.map((i) => S.cards[i]).filter(Boolean) : [];
-    const theirs = !S.solo && S.opp && S.opp.inGame ? S.opp.bf : [];
+    let mine, theirs, own = true;
+    if (S.role === 'spectator') {
+      const { host: h, guest: g } = S.sv;
+      mine = h && h.inGame ? h.bf : [];
+      theirs = g && g.inGame ? g.bf : [];
+      own = false;
+      const note = $('#specNote');
+      let txt = '';
+      if (!h) txt = 'Connecting to the table…';
+      else if (!g) txt = 'Waiting for a second player to join…';
+      else if (!h.inGame && !g.inGame) txt = (S.sv.meta.game ? 'Players are sideboarding for game ' + (S.sv.meta.game + 1) : 'Players are loading their decks') + '…';
+      note.hidden = !txt;
+      note.textContent = txt;
+    } else {
+      mine = inGame() ? S.z.battlefield.map((i) => S.cards[i]).filter(Boolean) : [];
+      theirs = !S.solo && S.opp && S.opp.inGame ? S.opp.bf : [];
+    }
     const pos = new Map();
     mine.forEach((c) => pos.set(c.id, { ...myPos(c), z: c.z }));
     theirs.forEach((c) => pos.set(c.id, { ...oppPos(c), z: c.z }));
-    const all = [...mine.map((c) => ({ c, mine: true })), ...theirs.map((c) => ({ c, mine: false }))];
+    const all = [...mine.map((c) => ({ c, mine: true, own })), ...theirs.map((c) => ({ c, mine: false, own: false }))];
     const subCount = {};
     all.forEach(({ c }) => {
       if (!c.attachedTo || !pos.has(c.attachedTo) || c.attachedTo === c.id) return;
@@ -1458,22 +1650,22 @@ Sideboard
       pos.set(c.id, { left: h.left, top: h.top + dir * k * Math.round(G.ch * 0.17), z: h.z, sub: k });
     });
     const seen = new Set();
-    for (const { c, mine: m } of all) {
-      const key = (m ? 'm:' : 'o:') + c.id;
+    for (const { c, mine: m, own: o } of all) {
+      const key = (m ? (o ? 'm:' : 'b:') : 'o:') + c.id;
       seen.add(key);
       let el = bfEls.get(key);
       if (!el) {
         el = document.createElement('div');
-        el.className = 'card bfc' + (m ? ' mine' : ' opp');
+        el.className = 'card bfc' + (o ? ' mine' : ' opp');
         el.dataset.id = c.id;
         el.dataset.pv = key;
-        el.dataset.side = m ? 'me' : 'opp';
+        el.dataset.side = o ? 'me' : 'opp';
         table.appendChild(el);
         bfEls.set(key, el);
       }
-      PV.set(key, { ...c, mine: m });
+      PV.set(key, { ...c, mine: o });
       const sig = JSON.stringify([c.faceDown, c.transformed, c.rot, c.img, c.counters, c.name]);
-      if (el._sig !== sig) { el.innerHTML = cardInner(c, m) + countersHTML(c); el._sig = sig; }
+      if (el._sig !== sig) { el.innerHTML = cardInner(c, o) + countersHTML(c); el._sig = sig; }
       el.classList.toggle('tapped', !!c.tapped);
       if (drag && drag.key === key && drag.moved) continue;
       const p = pos.get(c.id);
@@ -1493,6 +1685,39 @@ Sideboard
     else { ol.hidden = false; lifeBox(ol, S.opp.name, S.opp.life, false); }
     lifeBox($('#myLife'), S.myName || 'You', S.life, true);
     $$('#actions button').forEach((b) => { b.disabled = !inGame() && b.dataset.act !== 'dice'; });
+  }
+
+  function renderStripsSpec() {
+    const { host: h, guest: g } = S.sv;
+    const fill = (o, ids, sideKey) => {
+      const [lib, gy, ex] = ids.map((s) => $(s));
+      if (!o) { [lib, gy, ex].forEach((el) => setPile(el, '', false)); return; }
+      setPile(lib, pileHTML(Array(o.library).fill(null), 'lib', false, sideKey), o.library > 0);
+      setPile(gy, pileHTML(o.gy, 'gy', false, sideKey), o.gy.length > 0, sideKey + 'gy');
+      setPile(ex, pileHTML(o.ex, 'ex', false, sideKey), o.ex.length > 0, sideKey + 'ex');
+    };
+    fill(h, ['#myLib', '#myGy', '#myEx'], 'hst');
+    fill(g, ['#oppLib', '#oppGy', '#oppEx'], 'opp');
+    const backs = (o) => '<div class="cback"></div>'.repeat(Math.min(o.hand, 12)) + '<span class="n">' + o.hand + ' card' + (o.hand === 1 ? '' : 's') + ' in hand</span>';
+    const hand = $('#hand');
+    const hh = h ? '<div class="handbacks">' + backs(h) + '</div>' : '';
+    if (hand._html !== hh) { hand.innerHTML = hh; hand._html = hh; }
+    $('#oppHand').innerHTML = g ? backs(g) : '<span class="n">Waiting for a second player…</span>';
+    const who = (o, connected) => '<b>' + esc(o.name) + '</b>' + (S.collapsed ? '<span class="mlife"><span class="life opp">' + o.life + '</span></span>' : '') + '<br>' + (connected === false ? 'disconnected' : o.hand + ' in hand' + (o.side ? ' · ' + o.side + ' SB' : ''));
+    $('#myWho').innerHTML = h ? who(h) : '';
+    $('#oppWho').innerHTML = g ? who(g, S.sv.meta.guestConnected) : '';
+    $('#myTag').textContent = h ? h.name + '\u2019s battlefield' : '';
+    $('#oppTag').textContent = g ? g.name + '\u2019s battlefield' : '';
+  }
+  function renderSideSpec() {
+    const { host: h, guest: g } = S.sv;
+    const box = (el, o) => {
+      el.hidden = !o;
+      if (o) { el.classList.add('ro'); el.innerHTML = '<span class="nm">' + esc(o.name) + '</span><span class="life">' + o.life + '</span>'; }
+    };
+    box($('#oppLife'), g);
+    box($('#myLife'), h);
+    $('#actions').hidden = true;
   }
 
   function miniLife(who, life) {
@@ -1768,9 +1993,12 @@ Sideboard
     openModal({ title: self ? title : title, body: html, buttons: [{ label: 'OK', primary: true }], wide: cards.length > 4 });
   }
 
+  const toBottom = () => Math.max(0, S.mull - (S.gameFree ? 1 : 0));
   function openMulligan() {
     const ids = S.z.hand.slice();
-    const html = '<p class="msg">' + (S.mull ? 'Mulligans taken: ' + S.mull + '. If you keep, you’ll put ' + S.mull + ' card' + (S.mull > 1 ? 's' : '') + ' on the bottom.' : 'London mulligan: you always draw 7, then bottom one card per mulligan.') + '</p><div class="grid big">' + ids.map((id) => simpleCard(S.cards[id], 'mu:' + id, true)).join('') + '</div>';
+    const nb = toBottom();
+    const rule = 'London mulligan: you always draw 7, then bottom one card per mulligan' + (S.gameFree ? ' (your first mulligan is free).' : '.');
+    const html = '<p class="msg">' + (S.mull ? 'Mulligans taken: ' + S.mull + '. ' + (nb ? 'If you keep, you’ll put ' + nb + ' card' + (nb > 1 ? 's' : '') + ' on the bottom.' : 'This one was free: if you keep, you keep all 7.') : rule) + '</p><div class="grid big">' + ids.map((id) => simpleCard(S.cards[id], 'mu:' + id, true)).join('') + '</div>';
     openModal({
       title: 'Opening hand' + (S.mull ? ' (mulligan ' + S.mull + ')' : ''),
       body: html,
@@ -1778,12 +2006,12 @@ Sideboard
       closable: false,
       buttons: [
         { label: 'Mulligan', act: () => { setTimeout(mulliganAgain, 0); } },
-        { label: 'Keep', primary: true, act: () => { if (S.mull > 0) setTimeout(openBottoming, 0); } },
+        { label: 'Keep', primary: true, act: () => { if (toBottom() > 0) setTimeout(openBottoming, 0); } },
       ],
     });
   }
   function openBottoming() {
-    const need = Math.min(S.mull, S.z.hand.length);
+    const need = Math.min(toBottom(), S.z.hand.length);
     const chosen = [];
     const html = '<p class="msg">Choose ' + need + ' card' + (need > 1 ? 's' : '') + ' to put on the bottom of your library, in order.</p><div class="grid big">' + S.z.hand.map((id) => simpleCard(S.cards[id], 'bt:' + id, true)).join('') + '</div>';
     const m = openModal({
@@ -1854,16 +2082,17 @@ Sideboard
   }
 
   /** Zone viewer: stays live while open. */
-  function openViewer(zone, mine) {
+  function openViewer(zone, mine, src) {
     const titles = { graveyard: 'Graveyard', exile: 'Exile', library: 'Library (top first)', sideboard: 'Sideboard' };
-    const who = mine ? 'Your ' : oppName() + '’s ';
+    const srcState = src && S.sv[src];
+    const who = mine ? 'Your ' : (srcState ? srcState.name : oppName()) + '’s ';
     const wrap = document.createElement('div');
     const buttons = zone === 'library'
       ? [{ label: 'Close' }, { label: 'Shuffle & close', primary: true, act: () => shuffleLibrary() }]
       : [{ label: 'Close', primary: true }];
     wrap.innerHTML = '<input class="vfilter" placeholder="Filter by name or type, e.g. mountain, land, creature" autocomplete="off"><div class="vbody"></div>';
     const m = openModal({ title: who + titles[zone].toLowerCase(), body: wrap, wide: true, buttons, onClose: () => { if (S.viewer && S.viewer.m === m) S.viewer = null; } });
-    S.viewer = { zone, mine, m, wrap: $('.vbody', wrap), q: '' };
+    S.viewer = { zone, mine, m, wrap: $('.vbody', wrap), q: '', src };
     const box = $('.vfilter', wrap);
     box.addEventListener('input', () => { if (S.viewer) { S.viewer.q = box.value; renderViewer(); } });
     box.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); if (box.value) { box.value = ''; S.viewer.q = ''; renderViewer(); } else m.close(); } });
@@ -1878,7 +2107,7 @@ Sideboard
       cards = S.z[v.zone].map((i) => S.cards[i]).filter(Boolean);
       if (v.zone === 'graveyard' || v.zone === 'exile') cards = cards.slice().reverse();
     } else {
-      const o = S.opp || emptyOpp();
+      const o = (v.src && S.sv[v.src]) || S.opp || emptyOpp();
       cards = (v.zone === 'graveyard' ? o.gy : o.ex).slice().reverse();
     }
     const total = cards.length;
@@ -2239,6 +2468,16 @@ Sideboard
     if (t.closest('[data-setlife="me"]')) return askNumber('Set your life total', S.life, setLife);
     const act = t.closest('#actions [data-act]');
     if (act) return doAction(act.dataset.act, act);
+    if (S.role === 'spectator') {
+      const pile = t.closest('#oppGy, #oppEx, #myGy, #myEx');
+      if (pile) {
+        const src = pile.id.startsWith('opp') ? 'guest' : 'host';
+        const zone = pile.id.endsWith('Gy') ? 'graveyard' : 'exile';
+        const o = S.sv[src];
+        if (o && o[zone === 'graveyard' ? 'gy' : 'ex'].length) openViewer(zone, false, src);
+      }
+      return;
+    }
     if (t.closest('#oppGy') && S.opp && S.opp.gy.length) return openViewer('graveyard', false);
     if (t.closest('#oppEx') && S.opp && S.opp.ex.length) return openViewer('exile', false);
     const zv = t.closest('.card.zv');
@@ -2318,6 +2557,7 @@ Sideboard
   $('#myName').value = store.get('name') || '';
   $('#hostBtn').addEventListener('click', () => { if (needName()) host(); });
   $('#joinBtn').addEventListener('click', () => { if (needName()) join($('#joinCode').value); });
+  $('#watchBtn').addEventListener('click', () => { if (needName()) join($('#joinCode').value, true); });
   $('#joinCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#joinBtn').click(); });
   $('#soloBtn').addEventListener('click', () => { if (!needName()) return; S.solo = true; S.role = 'host'; setPhase('deck'); });
   $('#loadDeckBtn').addEventListener('click', loadDeck);
@@ -2325,14 +2565,33 @@ Sideboard
   $('#readyBtn').addEventListener('click', () => setReady(!S.meReady));
   $('#sbReadyBtn').addEventListener('click', () => setReady(!S.meReady));
   $('#editDeckBtn').addEventListener('click', () => { S.meReady = false; setPhase('deck'); deckMsg(S.deck ? 'Current deck is loaded. Edit the list and click Load deck to change it.' : ''); });
-  $('#resetScoreBtn').addEventListener('click', () => { S.score = { host: 0, guest: 0, draw: 0 }; S.lastLoser = null; send({ t: 'resetScore' }); render(); });
+  $('#resetScoreBtn').addEventListener('click', () => { S.score = { host: 0, guest: 0, draw: 0 }; S.lastLoser = null; send({ t: 'resetScore' }); relay(); render(); });
   $('#helpBtn').addEventListener('click', openHelp);
+  $$('.freeMull').forEach((cb) => {
+    cb.addEventListener('change', () => {
+      if (S.role === 'guest' || S.role === 'spectator') return;
+      S.freeMull = cb.checked;
+      store.set('freeMull', cb.checked ? '1' : '0');
+      syncNow();
+      render();
+    });
+  });
+  $$('.askMull').forEach((cb) => {
+    cb.checked = S.askMull;
+    cb.addEventListener('change', () => {
+      S.askMull = cb.checked;
+      store.set('askMull', cb.checked ? '1' : '0');
+      $$('.askMull').forEach((o) => { o.checked = S.askMull; });
+    });
+  });
   $('#panelBtn').addEventListener('click', () => setCollapsed(!S.collapsed));
   window.addEventListener('scroll', placeFloat, true);
   $('#smaller').addEventListener('click', () => { S.scale = clamp(S.scale - 0.1, 0.6, 1.6); store.set('scale', S.scale); render(); });
   $('#bigger').addEventListener('click', () => { S.scale = clamp(S.scale + 0.1, 0.6, 1.6); store.set('scale', S.scale); render(); });
   window.addEventListener('resize', () => render());
   window.addEventListener('blur', closeMenu);
+  // Say goodbye when the tab closes so the other side notices right away.
+  window.addEventListener('pagehide', () => { try { if (S.peer) S.peer.destroy(); } catch (e) { /* ignore */ } });
   window.addEventListener('beforeunload', (e) => { if (inGame() && S.connected) { e.preventDefault(); e.returnValue = ''; } });
 
   // Test hook (harmless in normal use): lets automated tests inspect state.
