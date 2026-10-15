@@ -237,6 +237,20 @@ body.collapsed #toasts, body.collapsed #banner { left: 50%; }
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 .handbacks .n { margin-left: 20px; color: var(--muted); font-size: 13px; }
+#oppHand .ohcard, .handbacks .ohcard {
+  flex: none;
+  cursor: default;
+  box-shadow: 0 0 0 2px #f2c94c, 0 1px 3px rgba(0, 0, 0, 0.5);
+  position: relative;
+  z-index: 1;
+}
+#oppHand .ohcard { width: calc(var(--cw) * 0.42); height: calc(var(--cw) * 0.42 / 0.716); border-radius: 4px; margin-right: -8px; }
+.handbacks .ohcard { width: calc(var(--cw) * 0.55); height: calc(var(--cw) * 0.55 / 0.716); border-radius: 5px; margin-right: -10px; }
+#hand .card.shown { box-shadow: 0 0 0 2px #f2c94c, 0 1px 4px rgba(0, 0, 0, 0.55); }
+.shownmark {
+  position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+  font-size: 9px; background: rgba(0, 0, 0, 0.75); color: #f2c94c; border-radius: 3px; padding: 0 4px; white-space: nowrap; pointer-events: none;
+}
 #specNote {
   position: absolute;
   left: 50%;
@@ -252,11 +266,39 @@ body.collapsed #toasts, body.collapsed #banner { left: 50%; }
   text-align: center;
 }
 #specNote[hidden] { display: none; }
+#specNote.seat { pointer-events: auto; color: var(--text); display: flex; flex-direction: column; gap: 10px; align-items: center; }
+#takeSeatBtn, #leaveBtn { padding: 3px 10px; }
 .watchers { color: var(--muted); }
 .lifebox.ro .life { cursor: default; }
 
 /* ---------- Table ---------- */
-#table { position: relative; flex: 1; overflow: hidden; min-height: 0; }
+#table { position: relative; z-index: 0; flex: 1; overflow: hidden; min-height: 0; }
+
+/* ---------- Spectator reactions ---------- */
+#reactions {
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+  pointer-events: none; z-index: 2000000; max-width: 45%;
+}
+.rbubble {
+  background: rgba(30, 33, 38, 0.94); border: 1px solid #4a515a; border-radius: 16px;
+  padding: 4px 12px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+  animation: rIn 0.2s ease-out, rOut 0.6s ease-in 3.4s forwards;
+}
+.rbubble b { color: var(--muted); font-weight: 600; margin-right: 6px; }
+.rbubble .emo { font-size: 22px; vertical-align: middle; }
+@keyframes rIn { from { opacity: 0; transform: translateY(10px) scale(0.95); } }
+@keyframes rOut { to { opacity: 0; transform: translateY(-14px); } }
+.reactbox { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.reactbox[hidden] { display: none; }
+.reactbox h4 { margin: 0; font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; }
+.reactbox h4 span { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.reactbox .emos { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.reactbox .emos button { padding: 2px 0; font-size: 18px; }
+.reactbox .phr { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.reactbox .phr button { padding: 4px 6px; font-size: 12px; text-align: center; }
+#reactBtn { padding: 3px 10px; }
 .half { position: absolute; left: 0; right: 0; height: 50%; }
 #oppHalf { top: 0; background: var(--table-opp); }
 #myHalf { bottom: 0; background: var(--table-me); border-top: 1px solid #2f343a; }
@@ -431,7 +473,7 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
   background: rgba(8, 9, 11, 0.72);
   z-index: 8000;
 }
-.overlay { background: rgba(8, 9, 11, 0.86); z-index: 7000; }
+.overlay { background: rgba(8, 9, 11, 0.86); z-index: 7000; top: 44px; }
 .overlay[hidden] { display: none; }
 .panel, .modal {
   background: var(--panel);
@@ -544,6 +586,9 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
     <button id="smaller" title="Smaller cards">A−</button>
     <button id="bigger" title="Bigger cards">A+</button>
   </div>
+  <button id="reactBtn" hidden title="Send a reaction">React</button>
+  <button id="takeSeatBtn" class="primary" hidden title="The other seat is open: join the match as a player">Take the seat</button>
+  <button id="leaveBtn" hidden title="Give up your seat and keep watching this table">Leave seat</button>
   <button id="panelBtn" title="Hide side panel (V)" aria-label="Toggle side panel"><svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="0.75" y="0.75" width="14.5" height="12.5" rx="2"/><line x1="10.5" y1="1" x2="10.5" y2="13"/></svg></button>
   <button id="helpBtn" title="Shortcuts (?)">?</button>
 </header>
@@ -563,6 +608,7 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
       <div id="oppHalf" class="half"><div class="tag" id="oppTag"></div></div>
       <div id="myHalf" class="half"><div class="tag" id="myTag">Your battlefield</div></div>
       <div id="specNote" hidden></div>
+      <div id="reactions"></div>
     </div>
     <div id="myStrip" class="strip me">
       <div class="piles">
@@ -590,6 +636,7 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
       <button data-act="hand">Hand…</button>
       <button data-act="endgame" class="wide">End game…</button>
     </div>
+    <div class="reactbox" id="reactBox" hidden></div>
   </aside>
 </main>
 
@@ -622,7 +669,7 @@ body.attaching .card.bfc:hover { box-shadow: 0 0 0 3px #f2c94c; }
   <div class="panel">
     <div class="roombox" id="roomBox" hidden></div>
     <h2>Load your deck</h2>
-    <p>Paste a decklist, one card per line, like <code>1 Lightning Bolt</code>. Put your sideboard after a line that says <code>Sideboard</code> (or after a blank line). Set codes and collector numbers are fine.</p>
+    <p>Paste a decklist, one card per line, like <code>1 Lightning Bolt</code>. Put your sideboard after a line that says <code>Sideboard</code> (or after a blank line). To use a specific printing, add its set code and collector number, like <code>1 Island (UNF) 238</code>.</p>
     <textarea id="deckText" spellcheck="false" placeholder="1 Lightning Bolt
 1 Snapcaster Mage
 8 Mountain
@@ -681,6 +728,11 @@ Sideboard
    * ===================================================================== */
 
   const PREFIX = 'cubeplaytest-v1-';
+  // Spectator reactions: a fixed list (no free text) and a rate limit.
+  const REACTIONS = ['👏', '😮', '😂', '🔥', '💀', '🤔', '🍆', '🫦', '😉', '❤️', 'Next level plays!!', 'I\'m the bat!', 'Heart of the cards!', 'Classic blue player amiright', 'Hurts to watch!', 'Counter it, Tim!!', 'He\'s just a lil guy'];
+  const EMOTE_COUNT = 10;
+  const REACT_GAP = 5000; // ms between reactions from one spectator
+  const REACT_PER_MIN = 6;
   const START_LIFE = 20;
   const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   const params = new URLSearchParams(location.search);
@@ -725,6 +777,8 @@ Sideboard
     attaching: null,
     scale: Number(store.get('scale')) || 1,
     collapsed: store.get('collapsed') === '1',
+    muteReacts: store.get('muteReacts') === '1',
+    reactTimes: [], // spectator: when I last reacted
     askMull: store.get('askMull') !== '0',
     freeMull: store.get('freeMull') === '1', // host's table rule
     gameFree: false, // rule in effect for the current game
@@ -756,7 +810,7 @@ Sideboard
   function zoneOf(id) { for (const k in S.z) if (S.z[k].includes(id)) return k; return null; }
   function removeFrom(id) { const k = zoneOf(id); if (k) S.z[k].splice(S.z[k].indexOf(id), 1); return k; }
   function resetCard(c, opt = {}) {
-    c.tapped = !!opt.tapped; c.counters = {}; c.attachedTo = null; c.transformed = false; c.rot = false; c.faceDown = !!opt.faceDown;
+    c.tapped = !!opt.tapped; c.counters = {}; c.attachedTo = null; c.transformed = false; c.rot = false; c.faceDown = !!opt.faceDown; c.shown = false;
   }
   function detachFrom(hostId) {
     S.z.battlefield.forEach((i) => { const a = S.cards[i]; if (a.attachedTo === hostId) { a.attachedTo = null; autoPlace(a); } });
@@ -926,6 +980,35 @@ Sideboard
     });
   }
 
+  /*
+   * The connection library silently drops any single message over ~16 KB, and a
+   * busy board easily exceeds that. postMsg() splits big messages into small
+   * pieces; joinMsg() puts them back together on the other side.
+   */
+  const PIECE = 4000; // characters; stays under the limit even with multi-byte text
+  let msgSeq = 0;
+  function postMsg(c, m) {
+    if (!c || !c.open) return;
+    const str = JSON.stringify(m);
+    if (str.length <= PIECE) { c.send(m); return; }
+    const id = Date.now().toString(36) + '-' + ++msgSeq;
+    const n = Math.ceil(str.length / PIECE);
+    for (let i = 0; i < n; i++) c.send({ t: 'piece', id, i, n, d: str.slice(i * PIECE, (i + 1) * PIECE) });
+  }
+  function joinMsg(c, m) {
+    if (!m || m.t !== 'piece') return m;
+    const all = (c._pieces = c._pieces || {});
+    const b = (all[m.id] = all[m.id] || { parts: [], got: 0, at: Date.now() });
+    if (b.parts[m.i] === undefined) { b.parts[m.i] = m.d; b.got++; }
+    if (b.got < m.n) {
+      // Forget half-finished messages that are clearly never going to finish.
+      for (const k in all) if (Date.now() - all[k].at > 30000) delete all[k];
+      return null;
+    }
+    delete all[m.id];
+    try { return JSON.parse(b.parts.join('')); } catch (e) { console.warn('bad message', e); return null; }
+  }
+
   /** Pings a connection every few seconds; if nothing arrives for 12s, treat it as gone. */
   function heartbeat(c, onDead) {
     c._seen = Date.now();
@@ -959,14 +1042,18 @@ Sideboard
       if (S.phase === 'lobby') setPhase('deck');
       render();
     });
-    c.on('data', (m) => { try { onMessage(m); } catch (err) { console.error('Bad message', m, err); } });
+    c.on('data', (raw) => { const m = joinMsg(c, raw); if (!m) return; try { onMessage(m); } catch (err) { console.error('Bad message', m, err); } });
     const gone = () => {
       if (S.conn !== c) return;
       c._dead = true;
       S.connected = false;
       S.conn = null;
+      const leftName = oppName();
+      if (S.oppLeft && S.role === 'host') S.opp = null; // left on purpose: clear their side of the table
       relay();
-      banner(oppName() + ' disconnected. ' + (S.role === 'host' ? 'They can rejoin with code ' + S.code + '.' : 'Ask them for a new code and reload this page.'));
+      if (S.oppLeft && S.role === 'host') banner(leftName + ' left the seat. Anyone watching can take it, or share code ' + S.code + ' with a new opponent.');
+      else banner(oppName() + ' disconnected. ' + (S.role === 'host' ? 'They can rejoin with code ' + S.code + '.' : 'Ask them for a new code and reload this page.'));
+      S.oppLeft = false;
       render();
     };
     c.on('close', gone);
@@ -975,19 +1062,19 @@ Sideboard
   }
 
   function send(m) {
-    if (S.conn && S.connected) { try { S.conn.send(m); } catch (e) { console.warn(e); } }
+    if (S.conn && S.connected) { try { postMsg(S.conn, m); } catch (e) { console.warn(e); } }
     if (S.role === 'host' && (m.t === 'toast' || m.t === 'reveal')) specBroadcast(m);
   }
 
   /* ---------------------------- spectators ---------------------------- */
   const liveSpecs = () => S.specs.filter((sp) => sp.open && sp.named);
-  function specBroadcast(m) { liveSpecs().forEach((sp) => { try { sp.c.send(m); } catch (e) { console.warn(e); } }); }
+  function specBroadcast(m) { liveSpecs().forEach((sp) => { try { postMsg(sp.c, m); } catch (e) { console.warn(e); } }); }
   function specView() {
     return {
       t: 'view',
       host: pubState(),
       guest: S.everConnected && S.opp ? S.opp : null,
-      meta: { code: S.code, score: S.score, game: S.game, guestConnected: S.connected, watchers: liveSpecs().length },
+      meta: { code: S.code, score: S.score, game: S.game, guestConnected: S.connected, seatOpen: !S.connected, watchers: liveSpecs().length },
     };
   }
   function relay() { if (S.role === 'host' && liveSpecs().length) specBroadcast(specView()); }
@@ -997,12 +1084,27 @@ Sideboard
     const sp = { c, name: 'A spectator', open: false, named: false };
     S.specs.push(sp);
     c.on('open', () => { sp.open = true; });
-    c.on('data', (m) => {
+    c.on('data', (raw) => {
+      const m = joinMsg(c, raw);
+      if (m && m.t === 'react') {
+        // The host enforces the same limits the spectator's page does.
+        const i = Number(m.i);
+        const now = Date.now();
+        sp.reacts = (sp.reacts || []).filter((t) => now - t < 60000);
+        if (!sp.named || !Number.isInteger(i) || i < 0 || i >= REACTIONS.length) return;
+        if (sp.reacts.length >= REACT_PER_MIN || (sp.reacts.length && now - sp.reacts[sp.reacts.length - 1] < REACT_GAP - 500)) return;
+        sp.reacts.push(now);
+        showReaction(sp.name, i);
+        const out = { t: 'react', name: sp.name, i };
+        send(out);
+        specBroadcast(out);
+        return;
+      }
       if (!m || m.t !== 'watch') return;
       const first = !sp.named;
       sp.named = true;
       sp.name = String(m.name || 'A spectator').slice(0, 24);
-      try { c.send(specView()); } catch (e) { console.warn(e); }
+      try { postMsg(c, specView()); } catch (e) { console.warn(e); }
       if (first) {
         toast(sp.name + ' is watching.');
         send({ t: 'toast', text: sp.name + ' is watching.' });
@@ -1041,7 +1143,8 @@ Sideboard
       greet();
       setPhase('watching');
     });
-    c.on('data', (m) => {
+    c.on('data', (raw) => {
+      const m = joinMsg(c, raw);
       if (!m || typeof m !== 'object') return;
       if (m.t === 'view') {
         S.gotView = true;
@@ -1049,6 +1152,7 @@ Sideboard
         render();
       } else if (m.t === 'toast') toast(String(m.text || ''), m.big ? 6000 : 4000, m.big);
       else if (m.t === 'reveal') showReveal(String(m.title || 'Revealed'), m.cards || []);
+      else if (m.t === 'react') showReaction(String(m.name || ''), Number(m.i));
       else if (m.t === 'full') lobbyMsg('That room is not accepting spectators.', true);
     });
     const gone = () => {
@@ -1088,6 +1192,7 @@ Sideboard
   function pubState() {
     return {
       name: S.myName, life: S.life, hand: S.z.hand.length, library: S.z.library.length, side: S.z.sideboard.length,
+      handView: S.z.hand.map((i) => (S.cards[i] && S.cards[i].shown ? pubCard(S.cards[i]) : 0)),
       bf: S.z.battlefield.map((i) => pubCard(S.cards[i])),
       gy: S.z.graveyard.map((i) => pubCard(S.cards[i])),
       ex: S.z.exile.map((i) => pubCard(S.cards[i])),
@@ -1103,6 +1208,7 @@ Sideboard
       case 'hello': {
         const first = !S.heardHello;
         S.heardHello = true;
+        if (first && S.role === 'host') freshMatchForNewOpponent();
         S.opp = S.opp || emptyOpp();
         S.opp.name = String(m.name || 'Opponent').slice(0, 24);
         if (!m.reply) send({ t: 'hello', name: S.myName, reply: true });
@@ -1112,7 +1218,20 @@ Sideboard
         break;
       }
       case 'full':
+        if (S.fromSeat) { reloadInto('watch', 'Someone else took the seat first. You\u2019re still watching.'); break; }
         lobbyMsg('That room already has two players.', true);
+        break;
+      case 'bye':
+        S.oppLeft = true;
+        toast(oppName() + ' left the seat.', 5000);
+        specBroadcast({ t: 'toast', text: oppName() + ' left the seat. Anyone watching can take it.', big: true });
+        break;
+      case 'react':
+        showReaction(String(m.name || ''), Number(m.i));
+        break;
+      case 'newMatch':
+        newMatch(false);
+        toast(oppName() + ' started a new match.', 5000, true);
         break;
       case 'state': {
         const s = m.s || {};
@@ -1317,7 +1436,25 @@ Sideboard
     send({ t: 'reveal', title: S.myName + ' reveals ' + title, cards });
     toast('Revealed ' + title + ' to ' + oppName() + '.');
   }
-  function shuffleHandIn() { S.z.hand.splice(0).forEach((id) => S.z.library.push(id)); shuffle(S.z.library); changed(); }
+  /** Reveals the top n cards of your library to the table; they stay on top in the same order. */
+  function revealTop(n) {
+    const ids = S.z.library.slice(0, Math.min(n, S.z.library.length));
+    if (!ids.length) return toast('Your library is empty.');
+    const what = ids.length === 1 ? 'the top card of their library' : 'the top ' + ids.length + ' cards of their library';
+    reveal(what, ids);
+    showReveal(ids.length === 1 ? 'Top card of your library' : 'Top ' + ids.length + ' cards of your library (top card first)', ids.map((i) => revealCard(S.cards[i])), true);
+  }
+  function shuffleHandIn() { S.z.hand.splice(0).forEach((id) => { S.cards[id].shown = false; S.z.library.push(id); }); shuffle(S.z.library); changed(); }
+  /** Turns hand cards face up (or back down) for the opponent until they leave the hand. */
+  function setShown(ids, v) {
+    const cards = ids.map((i) => S.cards[i]).filter((c) => c && zoneOf(c.id) === 'hand' && !!c.shown !== v);
+    if (!cards.length) return;
+    cards.forEach((c) => { c.shown = v; });
+    const what = cards.length === 1 ? cards[0].name : cards.length + ' cards';
+    if (v) { send({ t: 'toast', text: S.myName + ' turned ' + what + ' face up in their hand.' }); toast(what + ' stays revealed while it\u2019s in your hand.'); }
+    else send({ t: 'toast', text: S.myName + ' hid ' + what + ' in their hand again.' });
+    changed();
+  }
   function mulliganAgain() { shuffleHandIn(); drawN(7, true); S.mull++; changed(); openMulligan(); }
   function millN(n) { for (let i = 0; i < n && S.z.library.length; i++) moveCard(S.z.library[0], 'graveyard', { quiet: true }); changed(); }
   function setLife(v) { S.life = v; changed(); }
@@ -1362,46 +1499,72 @@ Sideboard
       let toSide = inSide || (!explicit && gap);
       if (/^SB:\s*/i.test(l)) { toSide = true; l = l.replace(/^SB:\s*/i, ''); }
       const m = l.match(/^(\d+)\s*[xX]?\s+(.+)$/);
-      let qty = 1, name = l;
+      let qty = 1, name = l, set = '', num = '';
       if (m) { qty = Math.min(Number(m[1]), 100); name = m[2]; }
-      name = name
-        .replace(/\s+\*[A-Z]+\*\s*$/, '')
-        .replace(/\s+#\S.*$/, '')
-        .replace(/\s+\[[^\]]*\]\s*$/, '')
-        .replace(/\s+\([A-Za-z0-9]{2,6}\)(\s+[A-Za-z0-9★†-]+)?\s*$/, '')
-        .replace(/\s+\*[A-Z]+\*\s*$/, '')
-        .trim();
+      name = name.replace(/\s+\*[A-Z]+\*\s*$/, '').replace(/\s+#\S.*$/, '');
+      // Printing, e.g. "Island (UNF) 238", "Island (UNF)" or "Island [UNF]".
+      const pm = name.match(/\s+[([]([A-Za-z0-9]{2,6})[)\]](?:\s+([A-Za-z0-9★†-]+))?\s*$/);
+      if (pm) { set = pm[1].toLowerCase(); num = pm[2] || ''; name = name.slice(0, pm.index); }
+      name = name.replace(/\s+\*[A-Z]+\*\s*$/, '').trim();
       if (!name) continue;
       sawCards = true;
-      for (let i = 0; i < qty; i++) (toSide ? side : main).push(name);
+      for (let i = 0; i < qty; i++) (toSide ? side : main).push({ name, set, num });
     }
     return { main, side };
   }
 
   const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 
-  async function fetchCards(names) {
-    const unique = [...new Set(names.map(norm))];
-    const original = {};
-    names.forEach((n) => { original[norm(n)] = original[norm(n)] || n; });
+  /** Lookup key for a decklist entry: name, plus set/number when given. */
+  const entryKey = (e) => norm(e.name) + '|' + (e.set || '') + '|' + (e.num || '');
+  const nameKey = (n) => norm(n) + '||';
+  const cardNames = (c) => [c.name, ...(c.card_faces || []).map((f) => f.name), c.name.split(' // ')[0]].filter(Boolean);
+
+  /** Looks up entries on Scryfall. Specific printings first; anything not found falls back to its name. */
+  async function fetchCards(entries) {
     const found = {};
-    for (let i = 0; i < unique.length; i += 75) {
-      const chunk = unique.slice(i, i + 75);
-      deckMsg('Looking up cards on Scryfall… ' + Math.min(i + 75, unique.length) + ' of ' + unique.length);
+    const byKey = new Map();
+    entries.forEach((e) => byKey.set(entryKey(e), e));
+    const printed = [...byKey.values()].filter((e) => e.set);
+    const total = byKey.size;
+    let done = 0;
+    const post = async (identifiers) => {
       const res = await fetch('https://api.scryfall.com/cards/collection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ identifiers: chunk.map((n) => ({ name: original[n] })) }),
+        body: JSON.stringify({ identifiers }),
       });
       if (!res.ok) throw new Error('Scryfall returned ' + res.status);
-      const data = await res.json();
-      (data.data || []).forEach((c) => {
+      return (await res.json()).data || [];
+    };
+    const batches = async (list, toIdent, onCard) => {
+      for (let i = 0; i < list.length; i += 75) {
+        const chunk = list.slice(i, i + 75);
+        done += chunk.length;
+        deckMsg('Looking up cards on Scryfall… ' + Math.min(done, total) + ' of ' + total);
+        (await post(chunk.map(toIdent))).forEach(onCard);
+        if (i + 75 < list.length) await new Promise((r) => setTimeout(r, 120));
+      }
+    };
+    // 1. Specific printings.
+    if (printed.length) {
+      await batches(printed, (e) => (e.num ? { set: e.set, collector_number: e.num } : { name: e.name, set: e.set }), (c) => {
         const t = tplFrom(c);
-        const keys = [c.name, ...(c.card_faces || []).map((f) => f.name), c.name.split(' // ')[0]];
-        keys.forEach((k) => { if (k) found[norm(k)] = found[norm(k)] || t; });
+        printed.forEach((e) => {
+          if (e.set !== String(c.set).toLowerCase()) return;
+          const hit = e.num ? String(c.collector_number).toLowerCase() === e.num.toLowerCase() : cardNames(c).some((n) => norm(n) === norm(e.name));
+          if (hit && !found[entryKey(e)]) found[entryKey(e)] = t;
+        });
       });
-      if (i + 75 < unique.length) await new Promise((r) => setTimeout(r, 120));
     }
+    // 2. Everything else (and printings that weren't found) by name.
+    const names = new Map();
+    [...byKey.values()].forEach((e) => { if (!found[entryKey(e)]) names.set(norm(e.name), e.name); });
+    done = total - names.size;
+    await batches([...names.values()], (n) => ({ name: n }), (c) => {
+      const t = tplFrom(c);
+      cardNames(c).forEach((n) => { if (!found[nameKey(n)]) found[nameKey(n)] = t; });
+    });
     return found;
   }
 
@@ -1414,11 +1577,11 @@ Sideboard
     try {
       const found = await fetchCards([...list.main, ...list.side]);
       const missing = new Set();
-      const toTpl = (n) => {
-        const t = found[norm(n)];
+      const toTpl = (e) => {
+        const t = found[entryKey(e)] || found[nameKey(e.name)];
         if (t) return t;
-        missing.add(n);
-        return { name: n, type: '', img: null, big: null, text: { pt: '' } };
+        missing.add(e.name);
+        return { name: e.name, type: '', img: null, big: null, text: { pt: '' } };
       };
       S.deck = { main: list.main.map(toTpl), side: list.side.map(toTpl) };
       S.meReady = false;
@@ -1516,6 +1679,8 @@ Sideboard
     const nw = S.role === 'host' ? liveSpecs().length : S.role === 'guest' ? (S.opp && S.opp.watchers) || 0 : S.role === 'spectator' ? S.sv.meta.watchers || 0 : 0;
     if (nw) st += '<span class="watchers">· ' + nw + ' watching</span>';
     $('#status').innerHTML = st;
+    $('#leaveBtn').hidden = S.role !== 'guest' || !S.connected;
+    $('#takeSeatBtn').hidden = !(S.role === 'spectator' && S.connected && S.sv.host && S.sv.meta.seatOpen);
     if (S.role === 'spectator') {
       const { host: h, guest: g, meta } = S.sv;
       const sco = meta.score || { host: 0, guest: 0, draw: 0 };
@@ -1588,11 +1753,11 @@ Sideboard
       hand.innerHTML = ids.map((id, k) => {
         const c = S.cards[id];
         PV.set('h:' + id, { ...c, mine: true });
-        return '<div class="card hcard" data-pv="h:' + esc(id) + '" data-id="' + esc(id) + '" style="margin-left:' + (k ? overlap : 0) + 'px">' + cardInner(c, true) + '</div>';
+        return '<div class="card hcard' + (c.shown ? ' shown' : '') + '" data-pv="h:' + esc(id) + '" data-id="' + esc(id) + '" style="margin-left:' + (k ? overlap : 0) + 'px">' + cardInner(c, true) + (c.shown ? '<span class="shownmark">revealed</span>' : '') + '</div>';
       }).join('');
       if (drag && drag.src === 'hand') { const el = hand.querySelector('[data-id="' + CSS.escape(drag.id) + '"]'); if (el) el.classList.add('lifting'); }
     }
-    $('#myWho').innerHTML = '<b>' + esc(S.myName || 'You') + '</b>' + (S.collapsed ? miniLife('me', S.life) : '') + '<br>' + S.z.hand.length + ' in hand' + (S.z.sideboard.length ? ' · ' + S.z.sideboard.length + ' SB' : '');
+    $('#myWho').innerHTML = '<b>' + esc(S.myName || 'You') + '</b>' + (S.collapsed ? miniLife('me', S.life) : '');
 
     const o = S.opp;
     if (S.solo) {
@@ -1612,9 +1777,9 @@ Sideboard
     setPile($('#oppLib'), pileHTML(Array(o.library).fill(null), 'lib', false, 'opp'), o.library > 0);
     setPile($('#oppGy'), pileHTML(o.gy, 'gy', false, 'opp'), o.gy.length > 0, 'oppgy');
     setPile($('#oppEx'), pileHTML(o.ex, 'ex', false, 'opp'), o.ex.length > 0, 'oppex');
-    const nBacks = Math.min(o.hand, 12);
-    $('#oppHand').innerHTML = '<div class="cback"></div>'.repeat(nBacks) + '<span class="n">' + o.hand + ' card' + (o.hand === 1 ? '' : 's') + ' in hand</span>';
-    $('#oppWho').innerHTML = '<b>' + esc(o.name) + '</b>' + (S.collapsed ? miniLife('opp', o.life) : '') + '<br>' + (S.connected ? (o.side ? o.side + ' SB' : '') : 'disconnected');
+    const oh = handRowHTML(o, 'opp');
+    if ($('#oppHand')._html !== oh) { $('#oppHand').innerHTML = oh; $('#oppHand')._html = oh; }
+    $('#oppWho').innerHTML = '<b>' + esc(o.name) + '</b>' + (S.collapsed ? miniLife('opp', o.life) : '') + (S.connected ? '' : '<br>disconnected');
     $('#oppTag').textContent = o.name + '’s battlefield';
   }
 
@@ -1628,11 +1793,14 @@ Sideboard
       own = false;
       const note = $('#specNote');
       let txt = '';
+      const seatOpen = !!h && S.connected && S.sv.meta.seatOpen;
       if (!h) txt = 'Connecting to the table…';
-      else if (!g) txt = 'Waiting for a second player to join…';
+      else if (seatOpen) txt = 'The seat across from ' + h.name + ' is open.';
       else if (!h.inGame && !g.inGame) txt = (S.sv.meta.game ? 'Players are sideboarding for game ' + (S.sv.meta.game + 1) : 'Players are loading their decks') + '…';
       note.hidden = !txt;
-      note.textContent = txt;
+      note.classList.toggle('seat', seatOpen);
+      const html = seatOpen ? '<div>' + esc(txt) + '</div><button class="primary" data-takeseat>Take the seat</button>' : esc(txt);
+      if (note._html !== html) { note.innerHTML = html; note._html = html; }
     } else {
       mine = inGame() ? S.z.battlefield.map((i) => S.cards[i]).filter(Boolean) : [];
       theirs = !S.solo && S.opp && S.opp.inGame ? S.opp.bf : [];
@@ -1687,6 +1855,18 @@ Sideboard
     $$('#actions button').forEach((b) => { b.disabled = !inGame() && b.dataset.act !== 'dice'; });
   }
 
+  /** Someone else's hand: card backs, plus any cards they've turned face up. */
+  function handRowHTML(o, side) {
+    const view = Array.isArray(o.handView) && o.handView.length === o.hand ? o.handView : Array(o.hand).fill(0);
+    const shown = view.filter(Boolean).length;
+    return view.map((c) => {
+      if (!c) return '<div class="cback"></div>';
+      const key = 'oh:' + side + ':' + c.id;
+      PV.set(key, { ...c, mine: false });
+      return '<div class="card ohcard opp" data-pv="' + esc(key) + '">' + cardInner(c, false) + '</div>';
+    }).join('') + '<span class="n">' + o.hand + ' card' + (o.hand === 1 ? '' : 's') + ' in hand' + (shown ? ' · ' + shown + ' revealed' : '') + '</span>';
+  }
+
   function renderStripsSpec() {
     const { host: h, guest: g } = S.sv;
     const fill = (o, ids, sideKey) => {
@@ -1698,17 +1878,63 @@ Sideboard
     };
     fill(h, ['#myLib', '#myGy', '#myEx'], 'hst');
     fill(g, ['#oppLib', '#oppGy', '#oppEx'], 'opp');
-    const backs = (o) => '<div class="cback"></div>'.repeat(Math.min(o.hand, 12)) + '<span class="n">' + o.hand + ' card' + (o.hand === 1 ? '' : 's') + ' in hand</span>';
+    const backs = (o) => handRowHTML(o, o === h ? 'hst' : 'opp');
     const hand = $('#hand');
     const hh = h ? '<div class="handbacks">' + backs(h) + '</div>' : '';
     if (hand._html !== hh) { hand.innerHTML = hh; hand._html = hh; }
-    $('#oppHand').innerHTML = g ? backs(g) : '<span class="n">Waiting for a second player…</span>';
-    const who = (o, connected) => '<b>' + esc(o.name) + '</b>' + (S.collapsed ? '<span class="mlife"><span class="life opp">' + o.life + '</span></span>' : '') + '<br>' + (connected === false ? 'disconnected' : o.hand + ' in hand' + (o.side ? ' · ' + o.side + ' SB' : ''));
+    const oh = g ? backs(g) : '<span class="n">Waiting for a second player…</span>';
+    if ($('#oppHand')._html !== oh) { $('#oppHand').innerHTML = oh; $('#oppHand')._html = oh; }
+    const who = (o, connected) => '<b>' + esc(o.name) + '</b>' + (S.collapsed ? '<span class="mlife"><span class="life opp">' + o.life + '</span></span>' : '') + (connected === false ? '<br>disconnected' : '');
     $('#myWho').innerHTML = h ? who(h) : '';
     $('#oppWho').innerHTML = g ? who(g, S.sv.meta.guestConnected) : '';
     $('#myTag').textContent = h ? h.name + '\u2019s battlefield' : '';
     $('#oppTag').textContent = g ? g.name + '\u2019s battlefield' : '';
   }
+  /* ---------------------------- reactions ---------------------------- */
+  function reactWait() {
+    const now = Date.now();
+    S.reactTimes = S.reactTimes.filter((t) => now - t < 60000);
+    let until = 0;
+    if (S.reactTimes.length) until = S.reactTimes[S.reactTimes.length - 1] + REACT_GAP;
+    if (S.reactTimes.length >= REACT_PER_MIN) until = Math.max(until, S.reactTimes[0] + 60000);
+    return Math.max(0, until - now);
+  }
+  function sendReaction(i) {
+    if (S.role !== 'spectator' || !S.connected || reactWait() > 0) return;
+    S.reactTimes.push(Date.now());
+    send({ t: 'react', i });
+    renderReactBox();
+  }
+  function showReaction(name, i) {
+    const text = REACTIONS[i];
+    if (!text) return;
+    if (S.muteReacts && S.role !== 'spectator') return;
+    const box = $('#reactions');
+    const b = document.createElement('div');
+    b.className = 'rbubble';
+    b.innerHTML = '<b>' + esc(name) + '</b>' + (i < EMOTE_COUNT ? '<span class="emo">' + text + '</span>' : esc(text));
+    box.appendChild(b);
+    while (box.children.length > 6) box.firstChild.remove();
+    setTimeout(() => b.remove(), 4100);
+  }
+  function renderReactBox() {
+    const box = $('#reactBox');
+    const on = S.role === 'spectator' && S.connected;
+    box.hidden = !on;
+    $('#reactBtn').hidden = !(on && S.collapsed);
+    if (!on) return;
+    const wait = reactWait();
+    const dis = wait > 0 ? ' disabled' : '';
+    const status = wait > 0 ? 'wait ' + Math.ceil(wait / 1000) + 's' : 'ready';
+    const btn = (i) => '<button data-react="' + i + '"' + dis + '>' + esc(REACTIONS[i]) + '</button>';
+    const html = '<h4>React <span>' + status + '</span></h4><div class="emos">' + REACTIONS.slice(0, EMOTE_COUNT).map((_, i) => btn(i)).join('') +
+      '</div><div class="phr">' + REACTIONS.slice(EMOTE_COUNT).map((_, k) => btn(k + EMOTE_COUNT)).join('') + '</div>';
+    if (box._html !== html) { box.innerHTML = html; box._html = html; }
+    $('#reactBtn').textContent = wait > 0 ? 'React (' + Math.ceil(wait / 1000) + 's)' : 'React';
+    $('#reactBtn').disabled = wait > 0;
+  }
+  setInterval(() => { if (S.role === 'spectator') renderReactBox(); }, 500);
+
   function renderSideSpec() {
     const { host: h, guest: g } = S.sv;
     const box = (el, o) => {
@@ -1718,6 +1944,7 @@ Sideboard
     box($('#oppLife'), g);
     box($('#myLife'), h);
     $('#actions').hidden = true;
+    renderReactBox();
   }
 
   function miniLife(who, life) {
@@ -1867,13 +2094,16 @@ Sideboard
       { label: 'Exile face down', act: () => moveCard(id, 'exile', { faceDown: true }) },
       { label: 'Library', sub: libMoves(id) },
       { sep: true },
-      !S.solo && { label: 'Reveal to ' + oppName(), act: () => reveal(c.name, [id]) },
+      !S.solo && { label: 'Reveal to ' + oppName() + ' (once)', act: () => reveal(c.name, [id]) },
+      !S.solo && (c.shown ? { label: 'Hide again', act: () => setShown([id], false) } : { label: 'Keep revealed in hand', act: () => setShown([id], true) }),
     ];
   }
   function handAreaMenu() {
     return [
       { head: 'Hand (' + S.z.hand.length + ')' },
-      !S.solo && { label: 'Reveal hand to ' + oppName(), disabled: !S.z.hand.length, act: () => reveal('their hand', S.z.hand.slice()) },
+      !S.solo && { label: 'Reveal hand to ' + oppName() + ' (once)', disabled: !S.z.hand.length, act: () => reveal('their hand', S.z.hand.slice()) },
+      !S.solo && { label: 'Keep whole hand revealed', disabled: !S.z.hand.some((i) => !S.cards[i].shown), act: () => setShown(S.z.hand.slice(), true) },
+      !S.solo && { label: 'Hide revealed cards', disabled: !S.z.hand.some((i) => S.cards[i].shown), act: () => setShown(S.z.hand.slice(), false) },
       { label: 'Discard at random', disabled: !S.z.hand.length, act: randomDiscard },
       { label: 'Shuffle hand into library', disabled: !S.z.hand.length, act: shuffleHandIn },
       { sep: true },
@@ -1893,7 +2123,8 @@ Sideboard
       { label: 'Look at top X…', act: () => ask('Look at how many?', (v) => openPeek('look', v), 3) },
       { label: 'Mill X…', act: () => ask('Mill how many?', millN) },
       { sep: true },
-      !S.solo && { label: 'Reveal top card', disabled: !n, act: () => { reveal('the top card of their library', [S.z.library[0]]); showReveal('Top card of your library', [revealCard(S.cards[S.z.library[0]])], true); } },
+      !S.solo && { label: 'Reveal top card', disabled: !n, act: () => revealTop(1) },
+      !S.solo && { label: 'Reveal top X…', disabled: !n, act: () => ask('Reveal how many from the top?', revealTop, 3) },
       { label: 'Play top card', disabled: !n, act: () => moveCard(S.z.library[0], 'battlefield') },
       { label: 'Play top card face down', disabled: !n, act: () => moveCard(S.z.library[0], 'battlefield', { faceDown: true }) },
       { label: 'Exile top card', disabled: !n, act: () => moveCard(S.z.library[0], 'exile') },
@@ -1937,6 +2168,8 @@ Sideboard
       { sep: true },
       { label: 'View sideboard', act: () => openViewer('sideboard', true) },
       { label: 'End game…', act: openEndGame },
+      !S.solo && { sep: true },
+      !S.solo && { label: S.muteReacts ? 'Show spectator reactions' : 'Mute spectator reactions', act: () => { S.muteReacts = !S.muteReacts; store.set('muteReacts', S.muteReacts ? '1' : '0'); toast(S.muteReacts ? 'Spectator reactions muted.' : 'Spectator reactions on.'); } },
     ];
   }
   const diceItems = () => [
@@ -1959,7 +2192,7 @@ Sideboard
     };
     back._api = api;
     back._closable = closable;
-    buttons.forEach((b) => {
+    buttons.filter(Boolean).forEach((b) => {
       const btn = document.createElement('button');
       btn.textContent = b.label;
       if (b.primary) btn.className = 'primary';
@@ -1967,7 +2200,7 @@ Sideboard
       btn.addEventListener('click', () => { if (b.act && b.act(api) === false) return; if (b.keep) return; api.close(); });
       foot.appendChild(btn);
     });
-    if (!buttons.length) foot.remove();
+    if (!buttons.filter(Boolean).length) foot.remove();
     back.addEventListener('pointerdown', (e) => { if (e.target === back && closable) api.close(); });
     $('#modals').appendChild(back);
     const f = $('input,select,textarea', bodyEl);
@@ -2182,15 +2415,60 @@ Sideboard
     const opp = S.solo ? 'Loss' : oppName() + ' won';
     openModal({
       title: 'End game ' + S.game + '?',
-      body: '<p class="msg">Record the result. Then you’ll both sideboard and ready up for the next game.</p>',
+      body: '<p class="msg">Record the result. Then you’ll both sideboard and ready up for the next game.</p>' + (S.solo ? '' : '<p class="msg">Or start a <b>new match</b>: no result is recorded, the score goes back to 0–0, and you both return to the deck screen.</p>'),
       buttons: [
         { label: 'Cancel' },
+        !S.solo && { label: 'New match', act: () => { send({ t: 'newMatch' }); setTimeout(() => newMatch(true), 0); } },
         { label: 'Draw', act: () => endWith('draw') },
         { label: opp, act: () => endWith(other(S.role)) },
         { label: S.solo ? 'Win' : 'I won', primary: true, act: () => endWith(S.role) },
       ],
     });
   }
+  /** Both players back to the deck screen with a 0–0 score; decks stay loaded. */
+  function newMatch(local) {
+    S.score = { host: 0, guest: 0, draw: 0 };
+    S.lastLoser = null;
+    S.game = 0;
+    S.meReady = false;
+    closeAllModals();
+    setPhase('deck');
+    if (S.deck) deckMsg('New match. Your deck is still loaded; change it if you like, then click Ready.', 'ok');
+    if (local) toast('New match started.', 4000, true);
+    if (S.role === 'host') specBroadcast({ t: 'toast', text: 'New match: players are back at the deck screen.', big: true });
+    relay();
+  }
+  /** Host: someone new sat down, so start a new match. */
+  function freshMatchForNewOpponent() {
+    S.opp = emptyOpp();
+    if (S.phase === 'playing' || S.phase === 'sideboard' || S.game) {
+      S.score = { host: 0, guest: 0, draw: 0 };
+      S.lastLoser = null;
+      S.game = 0;
+      S.meReady = false;
+      closeAllModals();
+      setPhase('deck');
+      if (S.deck) deckMsg('A new opponent sat down. Your deck is still loaded; click Ready when you are.', 'ok');
+    }
+    banner(null);
+  }
+  /** Reloads the page straight back into this room as a player or a spectator. */
+  function reloadInto(mode, note) {
+    S.leaving = true;
+    try { sessionStorage.setItem('cubept.auto', JSON.stringify({ mode, code: S.code, note: note || '' })); } catch (e) { /* ignore */ }
+    location.reload();
+  }
+  function leaveSeat() {
+    openModal({
+      title: 'Leave your seat?',
+      body: '<p class="msg">' + (inGame() ? 'Your current game ends. ' : '') + 'You\u2019ll keep watching this table as a spectator, and someone else can take your seat.</p>',
+      buttons: [
+        { label: 'Cancel' },
+        { label: 'Leave seat', primary: true, act: () => { send({ t: 'bye' }); setTimeout(() => reloadInto('watch'), 150); } },
+      ],
+    });
+  }
+
   function endWith(w) { send({ t: 'result', winner: w }); setTimeout(() => applyResult(w), 0); }
 
   function openHelp() {
@@ -2456,6 +2734,9 @@ Sideboard
   /* ---------------------------- input: clicks ---------------------------- */
   document.addEventListener('click', (e) => {
     const t = e.target;
+    if (t.closest('[data-takeseat]')) { reloadInto('join'); return; }
+    const rb = t.closest('[data-react]');
+    if (rb) { sendReaction(Number(rb.dataset.react)); return; }
     const cc = t.closest('[data-copycode]');
     if (cc) { copyCode(cc); return; }
     const lifeBtn = t.closest('[data-life]');
@@ -2585,6 +2866,12 @@ Sideboard
     });
   });
   $('#panelBtn').addEventListener('click', () => setCollapsed(!S.collapsed));
+  $('#leaveBtn').addEventListener('click', leaveSeat);
+  $('#reactBtn').addEventListener('click', () => {
+    const r = $('#reactBtn').getBoundingClientRect();
+    openMenu(r.left, r.bottom + 4, REACTIONS.map((t, i) => ({ label: t, act: () => sendReaction(i) })));
+  });
+  $('#takeSeatBtn').addEventListener('click', () => reloadInto('join'));
   window.addEventListener('scroll', placeFloat, true);
   $('#smaller').addEventListener('click', () => { S.scale = clamp(S.scale - 0.1, 0.6, 1.6); store.set('scale', S.scale); render(); });
   $('#bigger').addEventListener('click', () => { S.scale = clamp(S.scale + 0.1, 0.6, 1.6); store.set('scale', S.scale); render(); });
@@ -2592,12 +2879,24 @@ Sideboard
   window.addEventListener('blur', closeMenu);
   // Say goodbye when the tab closes so the other side notices right away.
   window.addEventListener('pagehide', () => { try { if (S.peer) S.peer.destroy(); } catch (e) { /* ignore */ } });
-  window.addEventListener('beforeunload', (e) => { if (inGame() && S.connected) { e.preventDefault(); e.returnValue = ''; } });
+  window.addEventListener('beforeunload', (e) => { if (!S.leaving && inGame() && S.connected) { e.preventDefault(); e.returnValue = ''; } });
 
   // Test hook (harmless in normal use): lets automated tests inspect state.
   window.__pt = { S, parseList };
 
   setCollapsed(S.collapsed);
+
+  // Coming back from "Leave seat" / "Take the seat": go straight into the room.
+  (() => {
+    let auto = null;
+    try { auto = JSON.parse(sessionStorage.getItem('cubept.auto') || 'null'); sessionStorage.removeItem('cubept.auto'); } catch (e) { auto = null; }
+    if (!auto || !auto.code || !$('#myName').value.trim()) return;
+    $('#joinCode').value = auto.code;
+    if (auto.note) toast(auto.note, 6000);
+    if (!needName()) return;
+    S.fromSeat = auto.mode === 'join';
+    join(auto.code, auto.mode === 'watch');
+  })();
 })();
 
 </script>
